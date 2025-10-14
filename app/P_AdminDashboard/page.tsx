@@ -2,326 +2,248 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import "./style.css";
+import { Button } from "@/app/components/ui/Button";
+import { Card } from "@/app/components/ui/Card";
+import { Tabs } from "@/app/components/Tabs";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("requests");
-  
-  // Sample user request data
+
+  // Dummy data (as requested)
   const requests = [
-    {
-      id: 1,
-      name: "Priya Sharma",
-      email: "priya.sharma@email.com",
-      role: "Creator",
-      requestedDate: "March 20, 2024"
-    },
-    {
-      id: 2,
-      name: "Rajesh Kumar",
-      email: "rajesh.kumar@email.com",
-      role: "Client",
-      requestedDate: "March 22, 2024"
-    },
-    {
-      id: 3,
-      name: "Anita Desai",
-      email: "anita.desai@email.com",
-      role: "Creator",
-      requestedDate: "March 25, 2024"
-    },
-    {
-      id: 4,
-      name: "Meera Patel",
-      email: "meera.patel@email.com",
-      role: "Client",
-      requestedDate: "March 26, 2024"
-    }
+    { id: 1, name: "Priya Sharma", email: "priya.sharma@email.com", role: "Creator", requestedDate: "March 20, 2024" },
+    { id: 2, name: "Rajesh Kumar", email: "rajesh.kumar@email.com", role: "Client", requestedDate: "March 22, 2024" },
+    { id: 3, name: "Anita Desai", email: "anita.desai@email.com", role: "Creator", requestedDate: "March 25, 2024" },
+    { id: 4, name: "Meera Patel", email: "meera.patel@email.com", role: "Client", requestedDate: "March 26, 2024" },
   ];
 
-  // Sample users data
   const users = [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      email: "sarah.j@email.com",
-      role: "Client",
-      status: "Active",
-      projects: 12,
-      functions: 45,
-      initials: "SJ"
-    },
-    {
-      id: 2,
-      name: "Michael Chen",
-      email: "m.chen@email.com",
-      role: "Creator",
-      status: "Active",
-      projects: 8,
-      functions: 32,
-      initials: "MC"
-    },
-    {
-      id: 3,
-      name: "Emily Rodriguez",
-      email: "emily.r@email.com",
-      role: "Client",
-      status: "Inactive",
-      projects: 5,
-      functions: 18,
-      initials: "ER"
-    }
+    { id: 1, name: "Sarah Johnson", email: "sarah.j@email.com", role: "Client", status: "Active", projects: 12, functions: 45, initials: "SJ" },
+    { id: 2, name: "Michael Chen", email: "m.chen@email.com", role: "Creator", status: "Active", projects: 8, functions: 32, initials: "MC" },
+    { id: 3, name: "Emily Rodriguez", email: "emily.r@email.com", role: "Client", status: "Inactive", projects: 5, functions: 18, initials: "ER" },
   ];
 
-  // Sample categories data
   const categories = [
     { id: 1, name: "Wedding Ceremony", description: "Ceremonial events and decorations", functions: 24 },
     { id: 2, name: "Corporate Events", description: "Business meetings and conferences", functions: 18 },
     { id: 3, name: "Birthday Parties", description: "Celebration events for birthdays", functions: 31 },
-    { id: 4, name: "Art Exhibitions", description: "Gallery and museum displays", functions: 12 }
+    { id: 4, name: "Art Exhibitions", description: "Gallery and museum displays", functions: 12 },
   ];
 
+  const tabs = [
+    { key: "requests", label: "Requests" },
+    { key: "users", label: "Users" },
+    { key: "reports", label: "Reports" },
+    { key: "categories", label: "Categories" },
+  ];
+
+  const RoleBadge = ({ role }: { role: string }) => {
+    const base = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
+    if (role.toLowerCase() === "creator") return <span className={base + " bg-blue-100 text-blue-700"}>Creator</span>;
+    return <span className={base + " bg-purple-100 text-purple-700"}>Client</span>;
+  };
+
+  const StatusBadge = ({ status }: { status: string }) => {
+    const base = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
+    if (status.toLowerCase() === "active") return <span className={base + " bg-green-100 text-green-700"}>Active</span>;
+    return <span className={base + " bg-gray-100 text-gray-700"}>Inactive</span>;
+  };
+
   return (
-    <div className="dashboard-container">
-      {/* Back to Menu Link */}
-      <Link href="/" className="back-link">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <polyline points="9 22 9 12 15 12 15 22"></polyline>
-        </svg>
-        Back to Menu
-      </Link>
-
-      {/* Header with title */}
-      <div className="dashboard-header">
-        <h1 className="dashboard-title">Admin Dashboard</h1>
-      </div>
-
-      {/* Navigation tabs */}
-      <div className="nav-tabs">
-        <button 
-          onClick={() => setActiveTab("requests")} 
-          className={`nav-tab ${activeTab === "requests" ? "active" : ""}`}
-        >
-          <svg className="nav-tab-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
+    <div className="min-h-screen bg-brown/5">
+      <div className="mx-auto max-w-6xl px-4 py-6 md:py-10">
+        {/* Back link */}
+        <Link href="/" className="mb-4 inline-flex items-center gap-2 text-brown hover:underline">
+          <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
-          Requests
-        </button>
-        <button 
-          onClick={() => setActiveTab("users")} 
-          className={`nav-tab ${activeTab === "users" ? "active" : ""}`}
-        >
-          <svg className="nav-tab-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          Users
-        </button>
-        <button 
-          onClick={() => setActiveTab("reports")} 
-          className={`nav-tab ${activeTab === "reports" ? "active" : ""}`}
-        >
-          <svg className="nav-tab-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          </svg>
-          Reports
-        </button>
-        <button 
-          onClick={() => setActiveTab("categories")} 
-          className={`nav-tab ${activeTab === "categories" ? "active" : ""}`}
-        >
-          <svg className="nav-tab-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-          Categories
-        </button>
-      </div>
+          Back to Menu
+        </Link>
 
-      {/* Tab Content */}
-      {activeTab === "requests" && (
-        <div className="content-container">
-          <div className="content-header">
-            <h2 className="content-title">Pending Account Requests</h2>
-            
-            <div className="dropdown-container">
-              <select className="dropdown-select">
-                <option>All Requests</option>
-                <option>Creator Requests</option>
-                <option>Client Requests</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="table-container">
-            <div className="table-row table-header">
-              <div className="table-cell">Name</div>
-              <div className="table-cell">Email</div>
-              <div className="table-cell">Role</div>
-              <div className="table-cell">Requested Date</div>
-              <div className="table-cell">Actions</div>
-            </div>
-            
-            {requests.map(request => (
-              <div key={request.id} className="table-row">
-                <div className="table-cell">{request.name}</div>
-                <div className="table-cell">{request.email}</div>
-                <div className="table-cell">
-                  <span className={`role-badge ${request.role.toLowerCase()}`}>
-                    {request.role}
-                  </span>
-                </div>
-                <div className="table-cell">{request.requestedDate}</div>
-                <div className="table-cell actions">
-                  <button className="action-button approve">Approve</button>
-                  <button className="action-button reject">Reject</button>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Page Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-brown md:text-3xl">Admin Dashboard</h1>
         </div>
-      )}
 
-      {activeTab === "users" && (
-        <div className="content-container">
-          {users.map(user => (
-            <div key={user.id} className="user-card">
-              <div className="user-avatar-container">
-                <div className="user-avatar">{user.initials}</div>
+        {/* Tabs */}
+        <Card className="p-0">
+          <div className="px-4 pt-3">
+            <Tabs tabs={tabs} defaultKey={activeTab} onChange={setActiveTab} />
+          </div>
+
+          {/* Requests */}
+          {activeTab === "requests" && (
+            <div className="space-y-4 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <h2 className="text-lg font-semibold text-brown">Pending Account Requests</h2>
+                <select className="w-full max-w-xs rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30">
+                  <option>All Requests</option>
+                  <option>Creator Requests</option>
+                  <option>Client Requests</option>
+                </select>
               </div>
-              <div className="user-info">
-                <h3 className="user-name">{user.name}</h3>
-                <p className="user-email">{user.email}</p>
-                <div className="user-tags">
-                  <span className={`role-badge ${user.role.toLowerCase()}`}>{user.role}</span>
-                  <span className={`status-badge ${user.status.toLowerCase()}`}>{user.status}</span>
+
+              <Card className="p-0">
+                <div className="grid grid-cols-12 border-b border-brown/10 bg-brown/5 px-4 py-3 text-xs font-semibold text-brown">
+                  <div className="col-span-3">Name</div>
+                  <div className="col-span-3">Email</div>
+                  <div className="col-span-2">Role</div>
+                  <div className="col-span-2">Requested Date</div>
+                  <div className="col-span-2 text-right">Actions</div>
                 </div>
+                <div>
+                  {requests.map((r) => (
+                    <div key={r.id} className="grid grid-cols-12 items-center border-b border-brown/10 px-4 py-3 last:border-none">
+                      <div className="col-span-3 text-sm text-brown">{r.name}</div>
+                      <div className="col-span-3 text-sm text-brown/80">{r.email}</div>
+                      <div className="col-span-2">
+                        <RoleBadge role={r.role} />
+                      </div>
+                      <div className="col-span-2 text-sm text-brown/80">{r.requestedDate}</div>
+                      <div className="col-span-2 flex items-center justify-end gap-2">
+                        <Button variant="gold" className="h-9 px-3 text-xs">Approve</Button>
+                        <Button variant="outline" className="h-9 px-3 text-xs text-red-600 border-red-200 hover:bg-red-50">Reject</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Users */}
+          {activeTab === "users" && (
+            <div className="space-y-4 p-4">
+              <div className="grid gap-4">
+                {users.map((u) => (
+                  <Card key={u.id} className="flex items-center justify-between gap-4 p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex size-12 items-center justify-center rounded-full bg-brown/10 text-sm font-semibold text-brown">
+                        {u.initials}
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-brown">{u.name}</h3>
+                        <p className="text-xs text-brown/70">{u.email}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <RoleBadge role={u.role} />
+                          <StatusBadge status={u.status} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <p className="text-sm text-brown">Projects: <span className="font-semibold">{u.projects}</span></p>
+                        <p className="text-sm text-brown">Functions: <span className="font-semibold">{u.functions}</span></p>
+                      </div>
+                      <Button variant="ghost" className="p-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
               </div>
-              <div className="user-stats">
-                <p>Projects: {user.projects}</p>
-                <p>Functions: {user.functions}</p>
-              </div>
-              <div className="user-actions">
-                <button className="chevron-button">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 18 15 12 9 6"></polyline>
+            </div>
+          )}
+
+          {/* Reports */}
+          {activeTab === "reports" && (
+            <div className="space-y-4 p-4">
+              <h2 className="text-lg font-semibold text-brown">Generate Reports</h2>
+              <Card className="p-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-brown">Start Date</label>
+                    <input type="text" placeholder="mm/dd/yyyy" className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-brown">End Date</label>
+                    <input type="text" placeholder="mm/dd/yyyy" className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <h3 className="mb-3 text-sm font-semibold text-brown">Report Types</h3>
+                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                    {[
+                      ["userActivity", "User Activity"],
+                      ["projectStats", "Project Statistics"],
+                      ["functionAnalytics", "Function Analytics"],
+                      ["systemPerformance", "System Performance"],
+                      ["revenueReports", "Revenue Reports"],
+                      ["userRegistrations", "User Registrations"],
+                    ].map(([id, label]) => (
+                      <label key={id} htmlFor={id} className="flex cursor-pointer items-center gap-2 rounded-xl border border-brown/10 bg-brown/5 px-3 py-2 text-sm text-brown hover:bg-brown/10">
+                        <input id={id} type="checkbox" className="size-4 accent-brown" />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <Button variant="gold" className="gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Generate Excel Report
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Categories */}
+          {activeTab === "categories" && (
+            <div className="space-y-4 p-4">
+              <h2 className="text-lg font-semibold text-brown">Function Categories</h2>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input type="text" placeholder="Add new category..." className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" />
+                <Button variant="brown" className="gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
-                </button>
+                  Add Category
+                </Button>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
 
-      {activeTab === "reports" && (
-        <div className="content-container">
-          <h2 className="content-title">Generate Reports</h2>
-          
-          <div className="report-form">
-            <div className="date-range">
-              <div className="date-field">
-                <label>Start Date</label>
-                <input type="text" placeholder="mm/dd/yyyy" className="date-input" />
-              </div>
-              <div className="date-field">
-                <label>End Date</label>
-                <input type="text" placeholder="mm/dd/yyyy" className="date-input" />
-              </div>
-            </div>
-            
-            <div className="report-types">
-              <h3>Report Types</h3>
-              <div className="checkbox-grid">
-                <div className="checkbox-item">
-                  <input type="checkbox" id="userActivity" />
-                  <label htmlFor="userActivity">User Activity</label>
-                </div>
-                <div className="checkbox-item">
-                  <input type="checkbox" id="projectStats" />
-                  <label htmlFor="projectStats">Project Statistics</label>
-                </div>
-                <div className="checkbox-item">
-                  <input type="checkbox" id="functionAnalytics" />
-                  <label htmlFor="functionAnalytics">Function Analytics</label>
-                </div>
-                <div className="checkbox-item">
-                  <input type="checkbox" id="systemPerformance" />
-                  <label htmlFor="systemPerformance">System Performance</label>
-                </div>
-                <div className="checkbox-item">
-                  <input type="checkbox" id="revenueReports" />
-                  <label htmlFor="revenueReports">Revenue Reports</label>
-                </div>
-                <div className="checkbox-item">
-                  <input type="checkbox" id="userRegistrations" />
-                  <label htmlFor="userRegistrations">User Registrations</label>
-                </div>
+              <div className="grid gap-4">
+                {categories.map((c) => (
+                  <Card key={c.id} className="flex items-center justify-between gap-4 p-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-brown">{c.name}</h3>
+                      <p className="mt-1 text-sm text-brown/70">{c.description}</p>
+                      <p className="mt-1 text-xs text-brown/60">{c.functions} functions</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" className="gap-1 px-3 py-1 text-xs">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        Edit
+                      </Button>
+                      <Button variant="outline" className="gap-1 px-3 py-1 text-xs text-red-600 border-red-200 hover:bg-red-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Delete
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
               </div>
             </div>
-            
-            <button className="generate-button">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Generate Excel Report
-            </button>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "categories" && (
-        <div className="content-container">
-          <h2 className="content-title">Function Categories</h2>
-          
-          <div className="category-form">
-            <input type="text" placeholder="Add new category..." className="category-input" />
-            <button className="add-button">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Add Category
-            </button>
-          </div>
-          
-          <div className="category-list">
-            {categories.map(category => (
-              <div key={category.id} className="category-item">
-                <div className="category-content">
-                  <h3 className="category-name">{category.name}</h3>
-                  <p className="category-description">{category.description}</p>
-                  <p className="category-functions">{category.functions} functions</p>
-                </div>
-                <div className="category-actions">
-                  <button className="icon-button edit">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                    Edit
-                  </button>
-                  <button className="icon-button delete">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6"></polyline>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
