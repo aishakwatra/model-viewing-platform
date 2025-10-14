@@ -1,42 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import "./style.css";
+import { useMemo, useState } from "react";
+import { Button } from "@/app/components/ui/Button";
+import { Card } from "@/app/components/ui/Card";
+import { Tabs } from "@/app/components/Tabs";
 
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("projects");
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // Sample project data
+
+  // Dummy data (kept as requested)
   const projects = [
-    {
-      id: 1,
-      name: "Project A",
-      created: "March 15, 2024",
-      functions: 4,
-      lastUpdated: "2 days ago",
-      available: true
-    },
-    {
-      id: 2,
-      name: "Project B",
-      created: "April 20, 2024",
-      functions: 3,
-      lastUpdated: "1 week ago",
-      available: true
-    },
-    {
-      id: 3,
-      name: "Project C",
-      created: "May 10, 2024",
-      functions: 2,
-      lastUpdated: "3 days ago",
-      available: true
-    }
+    { id: 1, name: "Project A", created: "March 15, 2024", functions: 4, lastUpdated: "2 days ago", available: true },
+    { id: 2, name: "Project B", created: "April 20, 2024", functions: 3, lastUpdated: "1 week ago", available: true },
+    { id: 3, name: "Project C", created: "May 10, 2024", functions: 2, lastUpdated: "3 days ago", available: true },
   ];
 
-  // Sample favorites data
   const favorites = [
     {
       id: 1,
@@ -45,8 +25,8 @@ export default function ClientDashboard() {
         { id: 1, version: "2.1", added: "2 days ago" },
         { id: 2, version: "2.0", added: "5 days ago" },
         { id: 3, version: "1.5", added: "1 week ago" },
-        { id: 4, version: "1.0", added: "2 weeks ago" }
-      ]
+        { id: 4, version: "1.0", added: "2 weeks ago" },
+      ],
     },
     {
       id: 2,
@@ -54,140 +34,139 @@ export default function ClientDashboard() {
       versions: [
         { id: 1, version: "2.0", added: "3 days ago" },
         { id: 2, version: "1.8", added: "1 week ago" },
-        { id: 3, version: "1.5", added: "2 weeks ago" }
-      ]
-    }
+        { id: 3, version: "1.5", added: "2 weeks ago" },
+      ],
+    },
   ];
 
-  return (
-    <div className="dashboard-container">
-      {/* Back to Menu Link */}
-      <Link href="/" className="back-link">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <polyline points="9 22 9 12 15 12 15 22"></polyline>
-        </svg>
-        Back to Menu
-      </Link>
+  const tabs = useMemo(
+    () => [
+      { key: "projects", label: "Projects" },
+      { key: "favourites", label: "Favourites" },
+    ],
+    []
+  );
 
-      {/* Header with user info */}
-      <div className="dashboard-header">
-        <h1 className="dashboard-title">Client Dashboard</h1>
-        <div className="user-info">
-          <div className="user-details">
-            <div className="user-name">Sarah Johnson</div>
-            <div className="user-email">sarah.j@email.com</div>
-          </div>
-          <div className="user-avatar">
-            SJ
+  const filteredProjects = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return projects;
+    return projects.filter((p) => p.name.toLowerCase().includes(q));
+  }, [projects, searchTerm]);
+
+  const StatusBadge = ({ available }: { available: boolean }) => (
+    <span className={["inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", available ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"].join(" ")}>
+      {available ? "Available" : "Unavailable"}
+    </span>
+  );
+
+  return (
+    <div className="min-h-screen bg-brown/5">
+      <div className="mx-auto max-w-6xl px-4 py-6 md:py-10">
+        {/* Back to Menu */}
+        <Link href="/" className="mb-4 inline-flex items-center gap-2 text-brown hover:underline">
+          <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+          Back to Menu
+        </Link>
+
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-brown md:text-3xl">Client Dashboard</h1>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-sm font-semibold text-brown">Sarah Johnson</div>
+              <div className="text-xs text-brown/70">sarah.j@email.com</div>
+            </div>
+            <div className="flex size-10 items-center justify-center rounded-full bg-brown/10 text-sm font-semibold text-brown">SJ</div>
           </div>
         </div>
-      </div>
 
-      {/* Navigation tabs */}
-      <div className="nav-tabs">
-        <button 
-          onClick={() => setActiveTab("projects")} 
-          className={`nav-tab ${activeTab === "projects" ? "active" : "inactive"}`}
-        >
-          <svg className="nav-tab-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2Z"/>
-          </svg>
-          Projects
-        </button>
-        <button 
-          onClick={() => setActiveTab("favourites")} 
-          className={`nav-tab ${activeTab === "favourites" ? "active" : "inactive"}`}
-        >
-          <svg className="nav-tab-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-          Favourites
-        </button>
-      </div>
-
-      {/* Projects Tab Content */}
-      {activeTab === "projects" && (
-        <>
-          {/* Search bar */}
-          <div className="search-container">
-            <input
-              type="text"
-              placeholder="Search projects..."
-              className="search-input"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <button 
-                className="clear-button"
-                onClick={() => setSearchTerm("")}
-              >
-                Clear
-              </button>
-            )}
+        {/* Tabs */}
+        <Card className="p-0">
+          <div className="px-4 pt-3">
+            <Tabs tabs={tabs} defaultKey={activeTab} onChange={setActiveTab} />
           </div>
 
-          {/* Project list */}
-          <div className="project-list">
-            {projects.map(project => (
-              <div key={project.id} className="project-card">
-                <div className="project-card-content">
-                  <div className="project-info">
-                    <h2 className="project-name">{project.name}</h2>
-                    <p className="project-meta">
-                      Created: {project.created} • {project.functions} functions • Last updated {project.lastUpdated}
-                    </p>
-                  </div>
-                  <div className="project-actions">
-                    <span className="status-badge">
-                      Available
-                    </span>
-                    <button className="chevron-button">
-                      <svg className="chevron-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+          {/* Projects */}
+          {activeTab === "projects" && (
+            <div className="space-y-4 p-4">
+              {/* Search */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Search projects..."
+                  className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <Button variant="outline" className="px-3 text-xs" onClick={() => setSearchTerm("")}>
+                    Clear
+                  </Button>
+                )}
               </div>
-            ))}
-          </div>
-        </>
-      )}
 
-      {/* Favourites Tab Content */}
-      {activeTab === "favourites" && (
-        <div className="favorites-container">
-          {favorites.map(favorite => (
-            <div key={favorite.id} className="project-card favorite-card">
-              <div className="favorite-header">
-                <h2 className="project-name">{favorite.name}</h2>
-                <button className="chevron-button">
-                  <svg className="chevron-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                  </svg>
-                </button>
-              </div>
-              <p className="project-meta">{favorite.versions.length} function versions</p>
-              
-              <div className="version-grid">
-                {favorite.versions.map(version => (
-                  <div key={version.id} className="version-card">
-                    <div className="version-image">
-                      <div className="placeholder-image">Image</div>
+              <div className="grid gap-4">
+                {filteredProjects.map((project) => (
+                  <Card key={project.id} className="p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-sm font-semibold text-brown">{project.name}</h2>
+                        <p className="mt-1 text-xs text-brown/70">
+                          Created: {project.created} • {project.functions} functions • Last updated {project.lastUpdated}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <StatusBadge available={project.available} />
+                        <Button variant="ghost" className="p-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                          </svg>
+                        </Button>
+                      </div>
                     </div>
-                    <div className="version-info">
-                      <p className="version-number">Version {version.version}</p>
-                      <p className="version-date">Added {version.added}</p>
-                    </div>
-                  </div>
+                  </Card>
                 ))}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          )}
+
+          {/* Favourites */}
+          {activeTab === "favourites" && (
+            <div className="space-y-4 p-4">
+              {favorites.map((favorite) => (
+                <Card key={favorite.id} className="p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-brown">{favorite.name}</h2>
+                    <Button variant="ghost" className="p-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </Button>
+                  </div>
+                  <p className="mb-3 text-xs text-brown/70">{favorite.versions.length} function versions</p>
+
+                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                    {favorite.versions.map((version) => (
+                      <Card key={version.id} className="p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-16 items-center justify-center rounded-xl bg-brown/10 text-xs text-brown">Image</div>
+                          <div>
+                            <p className="text-sm font-medium text-brown">Version {version.version}</p>
+                            <p className="text-xs text-brown/70">Added {version.added}</p>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
