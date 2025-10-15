@@ -80,7 +80,7 @@ export const projectsData: Project[] = [
         category: "Mehendi",
         version: "2.0",
         status: "Released for Download",
-        thumbnailUrl: "sangeet-stage.png",
+        thumbnailUrl: "/sangeet-stage.png",
         versions: ["2.0", "1.9", "1.8"],
       },
     ],
