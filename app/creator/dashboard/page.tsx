@@ -1,3 +1,4 @@
+// app/creator/dashboard/page.tsx
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -41,7 +42,7 @@ export default function CreatorDashboardPage() {
         .map(p => p.id);
       setOpenProjects(projectsToOpen);
      }
-  }, [activeTab]);
+  }, [activeTab, projects]);
 
   const handleStatusChange = (projectId: string, modelId: string, newStatus: string) => { 
     setProjects(currentProjects =>
@@ -63,27 +64,30 @@ export default function CreatorDashboardPage() {
 
   return (
     <>
-      {/* 3. RENDER THE MODAL */}
       <CreateProjectModal 
         isOpen={isCreateProjectModalOpen}
         onClose={() => setCreateProjectModalOpen(false)}
       />
 
       <div className="min-h-screen bg-beige">
-        <div className="border-b border-brown/10 bg-white shadow-sm">
-          <div className="mx-auto max-w-7xl space-y-4 px-6 py-4 md:px-8">
-            <h1 className="text-2xl font-semibold text-brown">Creator Dashboard</h1>
-            {/* 4. PASS THE HANDLER TO THE NAV */}
-            <DashboardNav 
-              activeView={activeView} 
-              onViewChange={setActiveView}
-              onCreateProjectClick={() => setCreateProjectModalOpen(true)}
-            />
+        {/* --- MODIFIED HEADER --- */}
+        <div className="border-b border-brown/10 bg-white shadow-sm sticky top-0 z-10">
+          <div className="mx-auto max-w-7xl px-6 md:px-8">
+            <div className="flex h-16 items-center justify-between">
+              <h1 className="text-xl font-semibold text-brown">Creator Dashboard</h1>
+              {/* The Nav component used to be here */}
+            </div>
           </div>
         </div>
 
         <div className="mx-auto mt-6 w-full max-w-7xl space-y-6 px-6 md:px-8">
-          {/* ... (Conditional view rendering is unchanged) */}
+          {/* --- NAV MOVED HERE --- */}
+          <DashboardNav 
+            activeView={activeView} 
+            onViewChange={setActiveView}
+            onCreateProjectClick={() => setCreateProjectModalOpen(true)}
+          />
+          
           {activeView === 'home' && (
             <>
               <DashboardFilters
@@ -117,4 +121,3 @@ export default function CreatorDashboardPage() {
   );
   
 }
-

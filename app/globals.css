@@ -6,3 +6,12 @@
   --color-gold:  #F8AB45;
   --color-pink:  #F19FC2;
 }
+
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
