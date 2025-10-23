@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/app/components/ui/Button";
 import { Card } from "@/app/components/ui/Card";
+import { Modal } from "@/app/components/ui/Confirm";
 import { Tabs } from "@/app/components/Tabs";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("requests");
+  const [isReportModalOpen, setReportModalOpen] = useState(false);
 
   // Dummy data (as requested)
   const requests = [
@@ -35,6 +37,24 @@ export default function AdminDashboard() {
     { key: "users", label: "Users" },
     { key: "reports", label: "Reports" },
     { key: "categories", label: "Categories" },
+  ];
+
+  const reportOptions = [
+    {
+      key: "creatorProjectsSummary",
+      label: "Number of projects & models per creator",
+      description: "Summarize creators along with their project and model counts",
+    },
+    {
+      key: "topFavoritedProjects",
+      label: "Projects with the most favourites",
+      description: "Highlight popular projects, their owners, and total favourites",
+    },
+    {
+      key: "activeClientsCount",
+      label: "Number of active clients",
+      description: "Provide a current total of active client accounts",
+    },
   ];
 
   const RoleBadge = ({ role }: { role: string }) => {
@@ -184,7 +204,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="mt-6">
-                  <Button variant="gold" className="gap-2">
+                  <Button variant="gold" className="gap-2" onClick={() => setReportModalOpen(true)}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                       <polyline points="7 10 12 15 17 10"></polyline>
@@ -196,6 +216,37 @@ export default function AdminDashboard() {
               </Card>
             </div>
           )}
+
+          <Modal
+            isOpen={isReportModalOpen}
+            onClose={() => setReportModalOpen(false)}
+            title="Generate Excel Report"
+            onCancelLabel="Close"
+          >
+            <div className="mt-4 space-y-4">
+              <p className="text-sm text-brown/70">
+                Select the information you want included in the exported Excel report.
+              </p>
+              <div className="space-y-3">
+                {reportOptions.map((option) => (
+                  <label
+                    key={option.key}
+                    htmlFor={option.key}
+                    className="flex cursor-pointer items-start gap-3 rounded-xl border border-brown/10 bg-brown/5 px-3 py-3 text-sm text-brown hover:bg-brown/10"
+                  >
+                    <input id={option.key} type="checkbox" className="mt-1 size-4 accent-brown" />
+                    <div>
+                      <p className="font-medium">{option.label}</p>
+                      <p className="text-xs text-brown/60">{option.description}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <Button variant="gold" className="w-full justify-center" onClick={() => setReportModalOpen(false)}>
+                Download Excel (Mock)
+              </Button>
+            </div>
+          </Modal>
 
           {/* Categories */}
           {activeTab === "categories" && (

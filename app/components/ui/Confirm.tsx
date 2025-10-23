@@ -4,12 +4,22 @@ import { Button } from "./Button";
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirmLabel?: string;
+  onCancelLabel?: string;
+  onConfirm?: () => void;
   title: string;
   children: React.ReactNode;
 }
 
-export function Modal({ isOpen, onClose, onConfirm, title, children }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  children,
+  onConfirmLabel = "Confirm Change",
+  onCancelLabel = "Cancel",
+}: ModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -19,11 +29,13 @@ export function Modal({ isOpen, onClose, onConfirm, title, children }: ModalProp
         <div className="mt-2 text-sm text-brown/80">{children}</div>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {onCancelLabel}
           </Button>
-          <Button variant="brown" onClick={onConfirm}>
-            Confirm Change
-          </Button>
+          {onConfirm && (
+            <Button variant="brown" onClick={onConfirm}>
+              {onConfirmLabel}
+            </Button>
+          )}
         </div>
       </Card>
     </div>
