@@ -78,6 +78,7 @@ export default function CreatorDashboardPage() {
               activeView={activeView} 
               onViewChange={setActiveView}
               onCreateProjectClick={() => setCreateProjectModalOpen(true)}
+              profileHref="/profile?from=creator"
             />
           </div>
         </div>

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/app/components/ui/Button";
 import { Card } from "@/app/components/ui/Card";
 import { Tabs } from "@/app/components/Tabs";
+import { ProfileIcon } from "@/app/components/ui/Icons";
 
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("projects");
@@ -79,6 +80,13 @@ export default function ClientDashboard() {
               <div className="text-sm font-semibold text-brown">Sarah Johnson</div>
               <div className="text-xs text-brown/70">sarah.j@email.com</div>
             </div>
+            <Link
+              href="/profile?from=client"
+              className="inline-flex items-center gap-2 rounded-xl border border-brown/10 bg-white px-4 py-2 text-sm font-medium text-brown shadow-[0_4px_12px_rgba(92,32,25,0.08)] transition hover:bg-brown/5"
+            >
+              <ProfileIcon />
+              Profile
+            </Link>
             <div className="flex size-10 items-center justify-center rounded-full bg-brown/10 text-sm font-semibold text-brown">SJ</div>
           </div>
         </div>

@@ -1,15 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from '@/app/components/ui/Button';
-import { HomeIcon, PortfolioIcon, PlusIcon } from '@/app/components/ui/Icons';
+import { HomeIcon, PortfolioIcon, PlusIcon, ProfileIcon } from '@/app/components/ui/Icons';
 
 interface DashboardNavProps {
   activeView: string;
   onViewChange: (view: 'home' | 'portfolio') => void;
   onCreateProjectClick: () => void; // 1. ADD NEW PROP
+  profileHref?: string;
 }
 
-export function DashboardNav({ activeView, onViewChange, onCreateProjectClick }: DashboardNavProps) {
+export function DashboardNav({ activeView, onViewChange, onCreateProjectClick, profileHref = "/profile" }: DashboardNavProps) {
   const portfolioPages = [
     { id: 'portfolio', name: 'Portfolio Page 1' }
   ];
@@ -38,14 +40,21 @@ export function DashboardNav({ activeView, onViewChange, onCreateProjectClick }:
            <PlusIcon /> New Page
         </Button>
       </div>
-      
-      <Button 
-        variant='gold' 
-        className="flex items-center gap-2"
-        onClick={onCreateProjectClick} // 2. ATTACH ONCLICK HANDLER
-      >
-        <PlusIcon /> Create New Project
-      </Button>
+      <div className="flex items-center gap-3">
+        <Link
+          href={profileHref}
+          className="inline-flex items-center gap-2 rounded-xl border border-brown/10 bg-white px-4 py-2 text-sm font-medium text-brown shadow-[0_4px_12px_rgba(92,32,25,0.08)] transition hover:bg-brown/5"
+        >
+          <ProfileIcon /> Profile
+        </Link>
+        <Button 
+          variant='gold' 
+          className="flex items-center gap-2"
+          onClick={onCreateProjectClick} // 2. ATTACH ONCLICK HANDLER
+        >
+          <PlusIcon /> Create New Project
+        </Button>
+      </div>
     </div>
   );
 }
