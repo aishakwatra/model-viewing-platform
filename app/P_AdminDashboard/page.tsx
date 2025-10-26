@@ -185,25 +185,6 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="mt-6">
-                  <h3 className="mb-3 text-sm font-semibold text-brown">Report Types</h3>
-                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                    {[
-                      ["userActivity", "User Activity"],
-                      ["projectStats", "Project Statistics"],
-                      ["functionAnalytics", "Function Analytics"],
-                      ["systemPerformance", "System Performance"],
-                      ["revenueReports", "Revenue Reports"],
-                      ["userRegistrations", "User Registrations"],
-                    ].map(([id, label]) => (
-                      <label key={id} htmlFor={id} className="flex cursor-pointer items-center gap-2 rounded-xl border border-brown/10 bg-brown/5 px-3 py-2 text-sm text-brown hover:bg-brown/10">
-                        <input id={id} type="checkbox" className="size-4 accent-brown" />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-6">
                   <Button variant="gold" className="gap-2" onClick={() => setReportModalOpen(true)}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
