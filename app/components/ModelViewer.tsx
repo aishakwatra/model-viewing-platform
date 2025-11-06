@@ -28,7 +28,7 @@ export function ModelViewer({ modelPath }: ModelViewerProps) {
   return (
     <div className="aspect-video w-full rounded-2xl bg-brown/5 shadow-[0_12px_40px_rgba(92,32,25,0.18)]">
       <Canvas 
-        camera={{ position: [5, 5, 5], fov: 50 }}
+        camera={{ position: [50, 50, 50], fov: 50 }}
       >
         <ambientLight intensity={0.5} />
         <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} castShadow />
