@@ -1,4 +1,4 @@
-import { ViewerPlaceholder } from "@/app/components/ViewerPlaceholder";
+// app/models/page.tsx
 import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
 import { SnapshotCard } from "@/app/components/SnapshotCard";
@@ -6,8 +6,12 @@ import { ModelMeta } from "@/app/components/ModelMeta";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { Avatar } from "@/app/components/Avatar";
 import { FavouriteIcon } from "@/app/components/ui/Icons";
+import { ModelViewer } from "@/app/components/ModelViewer";
 
 export default function ModelsPage() {
+  
+  const modelPathFromDatabase = "/models/sample1/scene.gltf"; 
+
   return (
     <div className="bg-beige min-h-screen pb-12">
       {/* Full-width Nav Bar */}
@@ -43,7 +47,7 @@ export default function ModelsPage() {
 
       {/* Centered Page Content */}
       <div className="mx-auto mt-6 w-full max-w-7xl space-y-6 px-6 md:px-8">
-        <ViewerPlaceholder />
+        <ModelViewer modelPath={modelPathFromDatabase} />
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <Card className="p-5">
             <h2 className="text-sm font-medium text-brown mb-4">Snapshots</h2>
@@ -120,4 +124,3 @@ export default function ModelsPage() {
     </div>
   );
 }
-
