@@ -145,7 +145,9 @@ export default function AdminDashboard() {
               <div><label className="mb-1 block text-sm font-medium text-brown">Start Date</label><input type="date" className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" /></div>
               <div><label className="mb-1 block text-sm font-medium text-brown">End Date</label><input type="date" className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" /></div>
             </div>
-            <Button variant="gold" className="gap-2"><ReportsIcon /> Generate Excel Report</Button>
+            <Button variant="gold" className="gap-2" onClick={() => setReportModalOpen(true)}>
+              <ReportsIcon /> Generate Excel Report
+            </Button>
           </Card>
         )}
 
@@ -161,115 +163,39 @@ export default function AdminDashboard() {
                 </Card>
               ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Reports */}
-          {activeTab === "reports" && (
-            <div className="space-y-4 p-4">
-              <h2 className="text-lg font-semibold text-brown">Generate Reports</h2>
-              <Card className="p-4">
-                <div className="grid gap-4 md:grid-cols-2">
+        <Modal
+          isOpen={isReportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          title="Generate Excel Report"
+          onCancelLabel="Close"
+        >
+          <div className="mt-4 space-y-4">
+            <p className="text-sm text-brown/70">
+              Select the information you want included in the exported Excel report.
+            </p>
+            <div className="space-y-3">
+              {reportOptions.map((option) => (
+                <label
+                  key={option.key}
+                  htmlFor={option.key}
+                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-brown/10 bg-brown/5 px-3 py-3 text-sm text-brown hover:bg-brown/10"
+                >
+                  <input id={option.key} type="checkbox" className="mt-1 size-4 accent-brown" />
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-brown">Start Date</label>
-                    <input type="text" placeholder="mm/dd/yyyy" className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" />
+                    <p className="font-medium">{option.label}</p>
+                    <p className="text-xs text-brown/60">{option.description}</p>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-brown">End Date</label>
-                    <input type="text" placeholder="mm/dd/yyyy" className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" />
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <Button variant="gold" className="gap-2" onClick={() => setReportModalOpen(true)}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="7 10 12 15 17 10"></polyline>
-                      <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    Generate Excel Report
-                  </Button>
-                </div>
-              </Card>
+                </label>
+              ))}
             </div>
-          )}
-
-          <Modal
-            isOpen={isReportModalOpen}
-            onClose={() => setReportModalOpen(false)}
-            title="Generate Excel Report"
-            onCancelLabel="Close"
-          >
-            <div className="mt-4 space-y-4">
-              <p className="text-sm text-brown/70">
-                Select the information you want included in the exported Excel report.
-              </p>
-              <div className="space-y-3">
-                {reportOptions.map((option) => (
-                  <label
-                    key={option.key}
-                    htmlFor={option.key}
-                    className="flex cursor-pointer items-start gap-3 rounded-xl border border-brown/10 bg-brown/5 px-3 py-3 text-sm text-brown hover:bg-brown/10"
-                  >
-                    <input id={option.key} type="checkbox" className="mt-1 size-4 accent-brown" />
-                    <div>
-                      <p className="font-medium">{option.label}</p>
-                      <p className="text-xs text-brown/60">{option.description}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              <Button variant="gold" className="w-full justify-center" onClick={() => setReportModalOpen(false)}>
-                Download Excel (Mock)
-              </Button>
-            </div>
-          </Modal>
-
-          {/* Categories */}
-          {activeTab === "categories" && (
-            <div className="space-y-4 p-4">
-              <h2 className="text-lg font-semibold text-brown">Function Categories</h2>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input type="text" placeholder="Add new category..." className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" />
-                <Button variant="brown" className="gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  Add Category
-                </Button>
-              </div>
-
-              <div className="grid gap-4">
-                {categories.map((c) => (
-                  <Card key={c.id} className="flex items-center justify-between gap-4 p-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-brown">{c.name}</h3>
-                      <p className="mt-1 text-sm text-brown/70">{c.description}</p>
-                      <p className="mt-1 text-xs text-brown/60">{c.functions} functions</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" className="gap-1 px-3 py-1 text-xs">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                        Edit
-                      </Button>
-                      <Button variant="outline" className="gap-1 px-3 py-1 text-xs text-red-600 border-red-200 hover:bg-red-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                        Delete
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-        </Card>
+            <Button variant="gold" className="w-full justify-center" onClick={() => setReportModalOpen(false)}>
+              Download Excel (Mock)
+            </Button>
+          </div>
+        </Modal>
       </div>
     </div>
   );
