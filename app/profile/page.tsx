@@ -1,6 +1,6 @@
 // app/profile/page.tsx (Modified)
 import { Suspense } from "react";
-import { ProfileClientPage } from "./ProfileClientPage";
+import { ProfileClientPage } from "../components/dashboard/ProfilePage";
 
 export default function ProfilePage() {
   return (

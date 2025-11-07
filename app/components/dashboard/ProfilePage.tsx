@@ -1,4 +1,4 @@
-// app/profile/ProfileClientPage.tsx (New File)
+
 "use client";
 
 import { useState } from "react";
@@ -10,21 +10,13 @@ import { Card } from "@/app/components/ui/Card";
 interface FormState {
   fullName: string;
   email: string;
-  phoneNumber: string;
-  organization: string;
-  role: "creator" | "client";
-  bio: string;
-  website: string;
+
 }
 
 const initialFormState: FormState = {
   fullName: "Sarah Johnson",
   email: "sarah.j@email.com",
-  phoneNumber: "(555) 123-4567",
-  organization: "Event Horizons Co.",
-  role: "client",
-  bio: "Event planning enthusiast. Looking for immersive 3D experiences for my clients.",
-  website: "https://eventhorizonsco.com",
+
 };
 
 export function ProfileClientPage() {
@@ -82,7 +74,9 @@ export function ProfileClientPage() {
 
       <Card className="p-6">
         <form className="grid gap-6">
+          {/* The grid-cols-2 layout will now organize the 3 remaining fields */}
           <div className="grid gap-4 md:grid-cols-2">
+            {/* Full Name */}
             <label className="flex flex-col gap-1">
               <span className="text-sm font-medium text-brown">Full Name</span>
               <input
@@ -93,6 +87,7 @@ export function ProfileClientPage() {
               />
             </label>
 
+            {/* Email Address */}
             <label className="flex flex-col gap-1">
               <span className="text-sm font-medium text-brown">Email Address</span>
               <input
@@ -103,60 +98,8 @@ export function ProfileClientPage() {
               />
             </label>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-brown">Phone Number</span>
-              <input
-                type="tel"
-                value={formState.phoneNumber}
-                onChange={(event) => handleInputChange("phoneNumber", event.target.value)}
-                className="rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-brown">Organization</span>
-              <input
-                type="text"
-                value={formState.organization}
-                onChange={(event) => handleInputChange("organization", event.target.value)}
-                className="rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
-              />
-            </label>
+        
           </div>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-brown">Account Role</span>
-            <select
-              value={formState.role}
-              onChange={(event) =>
-                handleInputChange("role", event.target.value as FormState["role"])
-              }
-              className="rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
-            >
-              <option value="creator">Creator</option>
-              <option value="client">Client</option>
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-brown">Website</span>
-            <input
-              type="url"
-              value={formState.website}
-              onChange={(event) => handleInputChange("website", event.target.value)}
-              className="rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-brown">Bio</span>
-            <textarea
-              value={formState.bio}
-              onChange={(event) => handleInputChange("bio", event.target.value)}
-              rows={4}
-              className="rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
-            />
-          </label>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-brown/60">

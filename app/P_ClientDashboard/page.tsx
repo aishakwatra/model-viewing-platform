@@ -113,21 +113,29 @@ export default function ClientDashboard() {
         <div className="mx-auto max-w-7xl px-6 md:px-8">
           <div className="flex h-16 items-center justify-between">
             <h1 className="text-xl font-semibold text-brown">Client Dashboard</h1>
+
+
             <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-sm font-semibold text-brown">Sarah Johnson</div>
-                <div className="text-xs text-brown/70">sarah.j@email.com</div>
+              
+              {/* 1. Profile Info & Initials (Right-aligned, text within item-center) */}
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-brown">Sarah Johnson</div>
+                  <div className="text-xs text-brown/70">sarah.j@email.com</div>
+                </div>
+                <div className="flex size-10 items-center justify-center rounded-full bg-brown/10 text-sm font-semibold text-brown">SJ</div>
               </div>
-              <div className="flex size-10 items-center justify-center rounded-full bg-brown/10 text-sm font-semibold text-brown">SJ</div>
+
+              {/* 2. Profile Link (Removed redundant code and retained the link) */}
+              <Link
+                href="/profile?from=client"
+                className="inline-flex items-center gap-2 rounded-xl border border-brown/10 bg-white px-4 py-2 text-sm font-medium text-brown shadow-[0_4px_12px_rgba(92,32,25,0.08)] transition hover:bg-brown/5"
+              >
+                <ProfileIcon />
+                Profile
+              </Link>
             </div>
-            <Link
-              href="/profile?from=client"
-              className="inline-flex items-center gap-2 rounded-xl border border-brown/10 bg-white px-4 py-2 text-sm font-medium text-brown shadow-[0_4px_12px_rgba(92,32,25,0.08)] transition hover:bg-brown/5"
-            >
-              <ProfileIcon />
-              Profile
-            </Link>
-            <div className="flex size-10 items-center justify-center rounded-full bg-brown/10 text-sm font-semibold text-brown">SJ</div>
+            
           </div>
         </div>
       </div>

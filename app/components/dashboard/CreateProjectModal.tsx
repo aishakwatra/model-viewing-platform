@@ -1,3 +1,4 @@
+// app/components/dashboard/CreateProjectModal.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,14 +10,39 @@ interface CreateProjectModalProps {
   onClose: () => void;
 }
 
+// MODIFICATION: Add a unique identifier (email) to distinguish users.
+const availableClients = [
+  { id: 'client-1', name: 'Sarah Johnson', email: 'sarah.j@event.com' },
+  { id: 'client-2', name: 'Rajesh Patel', email: 'rajesh.p@corp.com' },
+  // Example of a duplicate name distinguished by email
+  { id: 'client-3', name: 'Michael Chen', email: 'michael.c@main.com' },
+  { id: 'client-4', name: 'Michael Chen', email: 'mike.chen@partner.com' }, 
+];
+
 export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
   const [projectName, setProjectName] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [selectedClients, setSelectedClients] = useState<string[]>([]);
 
   const handleCreate = () => {
-    // In a real app, you would handle form validation and database submission here.
-    console.log("Creating project:", { projectName, startDate });
-    onClose(); // Close the modal after submission
+    // In a real app, this would handle form validation and database submission here.
+    console.log("Creating project:", { 
+      projectName, 
+      startDate, 
+      linkedClients: selectedClients 
+    });
+    // Reset state after submission
+    setProjectName("");
+    setStartDate("");
+    setSelectedClients([]);
+    onClose(); 
+  };
+
+  const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    // Collect all selected options (handles multi-select behavior)
+    const options = Array.from(e.target.selectedOptions);
+    const values = options.map(option => option.value);
+    setSelectedClients(values);
   };
 
   if (!isOpen) return null;
@@ -50,8 +76,28 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full rounded-lg border border-brown/20 bg-white px-4 py-2 text-sm text-brown placeholder-brown/50 outline-none focus:ring-2 focus:ring-gold/60"
+              className="w-full rounded-lg border border-brown/20 bg-white px-4 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-gold/60"
             />
+          </div>
+          
+          <div>
+            <label htmlFor="client-select" className="block text-sm font-medium text-brown/80 mb-1">Associated Client(s)</label>
+            <select
+              id="client-select"
+              multiple // Allows multiple clients to be selected
+              value={selectedClients}
+              onChange={handleClientChange}
+              className="w-full rounded-lg border border-brown/20 bg-white px-4 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-gold/60"
+              size={4} // Increased size to show more options
+            >
+              {availableClients.map(client => (
+                <option key={client.id} value={client.id}>
+                  {/* MODIFICATION: Display name AND email */}
+                  {client.name} ({client.email})
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-brown/60 mt-1">Hold Ctrl (Cmd on Mac) to select multiple clients.</p>
           </div>
         </div>
 
