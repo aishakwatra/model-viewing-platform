@@ -1,15 +1,16 @@
 // app/P_ClientDashboard/page.tsx
 "use client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+// 1. IMPORT useEffect
+import { useMemo, useState, useEffect } from "react"; 
 import { Button } from "@/app/components/ui/Button";
 import { Card } from "@/app/components/ui/Card";
-import { Tabs } from "@/app/components/Tabs";
 import { ProfileIcon } from "@/app/components/ui/Icons";
 import { ChevronDownIcon, PortfolioIcon, FavouriteIcon } from "@/app/components/ui/Icons";
 import { ClientFunctionCard } from "@/app/components/client/ClientFunctionCard";
 import { FavouritesCarousel } from "@/app/components/client/FavouritesCarousel";
-import { projectsData } from "@/app/lib/data";
+// 1. IMPORT filterTabs
+import { projectsData, filterTabs } from "@/app/lib/data";
 
 const favouritesData = [
   {
@@ -38,8 +39,10 @@ const favouritesData = [
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("projects");
   const [searchTerm, setSearchTerm] = useState("");
-  const [openProjectId, setOpenProjectId] = useState<string | null>(null);
+  // 2. CHANGE STATE: From single ID to array of IDs (openProjects)
+  const [openProjects, setOpenProjects] = useState<string[]>([]);
   const [openFavouriteId, setOpenFavouriteId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState("All Projects"); // State for category filter
 
   const tabs = useMemo(
     () => [
@@ -50,10 +53,24 @@ export default function ClientDashboard() {
   );
 
   const filteredProjects = useMemo(() => {
+    let currentProjects = projectsData;
     const q = searchTerm.trim().toLowerCase();
-    if (!q) return projectsData;
-    return projectsData.filter((p) => p.name.toLowerCase().includes(q));
-  }, [searchTerm]);
+    
+    // Apply Search Filter
+    if (q) {
+      currentProjects = currentProjects.filter((p) => p.name.toLowerCase().includes(q));
+    }
+
+    // Apply Category Filter to Projects
+    if (activeCategory !== "All Projects") {
+        currentProjects = currentProjects.filter(project => 
+            // Only keep projects that contain at least one model in the active category
+            project.models.some(model => model.category === activeCategory)
+        );
+    }
+
+    return currentProjects;
+  }, [searchTerm, activeCategory]);
 
   const StatusBadge = ({ status }: { status: string }) => (
     <span className={["inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", status === "Complete" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"].join(" ")}>
@@ -61,13 +78,34 @@ export default function ClientDashboard() {
     </span>
   );
   
+  // 3. MODIFY TOGGLE FUNCTION: Handles adding/removing an ID from the array
   const toggleProject = (id: string) => {
-    setOpenProjectId(prevId => (prevId === id ? null : id));
+    setOpenProjects(prev => 
+      prev.includes(id) 
+        ? prev.filter(projectId => projectId !== id) 
+        : [...prev, id]
+    );
   };
 
   const toggleFavourite = (id: string) => {
     setOpenFavouriteId(prevId => (prevId === id ? null : id));
   };
+  
+  // 4. NEW: useEffect to implement the snapping behavior (opens projects on category select)
+  useEffect(() => {
+    if (activeCategory === "All Projects") { 
+        // If 'All Projects' is selected, collapse all accordions.
+        setOpenProjects([]); 
+    } 
+    else { 
+        // When a category is selected, open only the projects that match.
+        const projectsToOpen = projectsData 
+            .filter(p => p.models.some(m => m.category === activeCategory))
+            .map(p => p.id);
+        setOpenProjects(projectsToOpen);
+    }
+  }, [activeCategory]);
+
 
   return (
     <div className="min-h-screen bg-beige">
@@ -111,26 +149,49 @@ export default function ClientDashboard() {
 
         {activeTab === "projects" && (
           <div className="space-y-4">
-            <Card className="p-4">
-                <div className="relative flex items-center">
-                  <input
-                    type="text"
-                    placeholder="Search projects..."
-                    className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  {searchTerm && (
-                    <Button variant="gold" className="absolute right-2 h-7 px-3 text-xs" onClick={() => setSearchTerm("")}>
-                      Clear
-                    </Button>
-                  )}
-                </div>
+            
+            <Card className="p-4 space-y-4">
+              {/* Category Tabs UI */}
+              <div className="flex flex-wrap gap-2 border-b border-brown/10 pb-4">
+                {filterTabs.map((tab) => (
+                  <Button
+                    key={tab}
+                    variant={activeCategory === tab ? "gold" : "outline"}
+                    onClick={() => setActiveCategory(tab)}
+                    className="rounded-full px-4 text-xs"
+                  >
+                    {tab}
+                  </Button>
+                ))}
+              </div>
+              
+              {/* Search Bar */}
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  placeholder="Search projects..."
+                  className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <Button variant="gold" className="absolute right-2 h-7 px-3 text-xs" onClick={() => setSearchTerm("")}>
+                    Clear
+                  </Button>
+                )}
+              </div>
             </Card>
 
             <div className="grid gap-4">
               {filteredProjects.map((project) => {
-                const isOpen = openProjectId === project.id;
+                // 5. UPDATE RENDER CHECK: Check against the new openProjects array
+                const isOpen = openProjects.includes(project.id);
+                
+                // Filter models inside the project based on the selected category
+                const filteredModels = project.models.filter(model => 
+                    activeCategory === "All Projects" || model.category === activeCategory
+                );
+                
                 return (
                   <Card key={project.id} className="p-0 overflow-hidden">
                     <button className="w-full text-left p-4" onClick={() => toggleProject(project.id)}>
@@ -147,11 +208,11 @@ export default function ClientDashboard() {
                         </div>
                       </div>
                     </button>
-                    {isOpen && project.models.length > 0 && (
+                    {isOpen && filteredModels.length > 0 && (
                       <div className="p-4 border-t border-brown/10 bg-brown/5">
-                         {/* --- CHANGE IS HERE --- */}
+                         {/* --- USE FILTERED MODELS --- */}
                          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                          {project.models.map(model => (
+                          {filteredModels.map(model => (
                             <ClientFunctionCard key={model.id} func={{
                               id: model.id,
                               name: model.name,
