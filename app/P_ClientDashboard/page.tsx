@@ -8,8 +8,9 @@ import { ProfileIcon } from "@/app/components/ui/Icons";
 import { ChevronDownIcon, PortfolioIcon, FavouriteIcon } from "@/app/components/ui/Icons";
 import { ClientFunctionCard } from "@/app/components/client/ClientFunctionCard";
 import { FavouritesCarousel } from "@/app/components/client/FavouritesCarousel";
-import { UserSelector } from "@/app/components/UserSelector";
+// import { UserSelector } from "@/app/components/UserSelector"; // No longer needed
 import { fetchUserProjects, fetchUserFavourites, fetchProjectModels } from "@/app/lib/clientData";
+import { getCurrentUser } from "@/app/lib/auth";
 
 interface ProjectData {
   id: number;
@@ -58,12 +59,13 @@ export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("projects");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [favourites, setFavourites] = useState<FavouriteData[]>([]);
   const [projectModels, setProjectModels] = useState<Record<number, ModelData[]>>({});
   const [openProjects, setOpenProjects] = useState<number[]>([]);
   const [openFavouriteId, setOpenFavouriteId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const tabs = useMemo(
@@ -74,28 +76,60 @@ export default function ClientDashboard() {
     []
   );
 
+  // Initialize: Check authentication and load user data (without redirect)
   useEffect(() => {
-    if (currentUserId) {
-      loadUserData();
-    }
-  }, [currentUserId]);
+    initializeDashboard();
+  }, []);
 
-  async function loadUserData() {
+  async function initializeDashboard() {
     try {
       setLoading(true);
       setError(null);
-      const [projectsData, favouritesData] = await Promise.all([
-        fetchUserProjects(currentUserId!),
-        fetchUserFavourites(currentUserId!),
-      ]);
-      setProjects(projectsData as ProjectData[]);
-      setFavourites(favouritesData as FavouriteData[]);
+
+      // Get authenticated user
+      const user = getCurrentUser();
+      
+      if (!user) {
+        console.log("ℹ️ No authenticated user found. Showing guest view.");
+        setCurrentUser(null);
+        setCurrentUserId(null);
+        setProjects([]);
+        setFavourites([]);
+        return;
+      }
+
+      console.log("✅ Authenticated user:", user);
+      setCurrentUser(user);
+      setCurrentUserId(user.user_id);
+
+      // Load user's projects and favourites
+      await loadUserData(user.user_id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load data");
+      console.error("Error initializing dashboard:", err);
+      setError(err instanceof Error ? err.message : "Failed to initialize dashboard");
     } finally {
       setLoading(false);
     }
   }
+
+  async function loadUserData(userId: number) {
+    try {
+      console.log(`🔄 Loading data for user ID: ${userId}`);
+      const [projectsData, favouritesData] = await Promise.all([
+        fetchUserProjects(userId),
+        fetchUserFavourites(userId),
+      ]);
+      
+      console.log(`✅ Loaded ${projectsData.length} projects and ${favouritesData.length} favourites`);
+      setProjects(projectsData as ProjectData[]);
+      setFavourites(favouritesData as FavouriteData[]);
+    } catch (err) {
+      console.error("Error loading user data:", err);
+      throw err;
+    }
+  }
+
+
 
   async function loadProjectModels(projectId: number) {
     if (projectModels[projectId]) return; // Already loaded
@@ -206,21 +240,46 @@ export default function ClientDashboard() {
       <div className="border-b border-brown/10 bg-white shadow-sm sticky top-0 z-10">
         <div className="mx-auto max-w-7xl px-6 md:px-8">
           <div className="flex h-16 items-center justify-between">
-            <h1 className="text-xl font-semibold text-brown">Client Dashboard</h1>
+            <div>
+              <h1 className="text-xl font-semibold text-brown">Client Dashboard</h1>
+              {currentUser ? (
+                <p className="text-xs text-brown/60">
+                  Welcome, {currentUser.full_name || currentUser.email}
+                </p>
+              ) : (
+                <p className="text-xs text-brown/60">
+                  Explore projects and models tailored for you.
+                </p>
+              )}
+            </div>
 
             <div className="flex items-center gap-4">
-              <UserSelector 
-                onUserSelect={setCurrentUserId} 
-                currentUserId={currentUserId} 
-              />
+              {/* UserSelector removed - using authenticated user */}
 
-              <Link
-                href="/profile?from=client"
-                className="inline-flex items-center gap-2 rounded-xl border border-brown/10 bg-white px-4 py-2 text-sm font-medium text-brown shadow-[0_4px_12px_rgba(92,32,25,0.08)] transition hover:bg-brown/5"
-              >
-                <ProfileIcon />
-                Profile
-              </Link>
+              {currentUser ? (
+                <Link
+                  href="/profile?from=client"
+                  className="inline-flex items-center gap-2 rounded-xl border border-brown/10 bg-white px-4 py-2 text-sm font-medium text-brown shadow-[0_4px_12px_rgba(92,32,25,0.08)] transition hover:bg-brown/5"
+                >
+                  <ProfileIcon />
+                  Profile
+                </Link>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/auth?mode=login"
+                    className="inline-flex items-center gap-2 rounded-xl border border-brown/20 bg-white px-4 py-2 text-sm font-medium text-brown transition hover:bg-brown/5"
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    href="/auth?mode=signup"
+                    className="inline-flex items-center gap-2 rounded-xl border border-brown/10 bg-gold/90 px-4 py-2 text-sm font-semibold text-brown transition hover:bg-gold"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -241,24 +300,45 @@ export default function ClientDashboard() {
           ))}
         </div>
 
-        {!currentUserId ? (
+        {loading ? (
           <Card className="p-8 text-center">
+            <div className="text-brown/70">Loading your dashboard...</div>
+          </Card>
+        ) : error ? (
+          <Card className="p-8 text-center">
+            <div className="text-red-600">{error}</div>
+            <Button 
+              variant="brown" 
+              onClick={initializeDashboard} 
+              className="mt-4"
+            >
+              Retry
+            </Button>
+          </Card>
+        ) : !currentUserId ? (
+          <Card className="p-8 text-center space-y-4">
             <div className="text-brown/70">
               <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto mb-4 size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
-              <p className="text-lg font-medium text-brown">Please select a user to view their dashboard</p>
-              <p className="mt-2 text-sm">Use the user selector in the top right to choose which user you want to impersonate</p>
+              <p className="text-lg font-medium text-brown">Log in to see your projects</p>
+              <p className="mt-2 text-sm">Access assigned projects, favourites, and personalized resources once you are signed in.</p>
             </div>
-          </Card>
-        ) : loading ? (
-          <Card className="p-8 text-center">
-            <div className="text-brown/70">Loading...</div>
-          </Card>
-        ) : error ? (
-          <Card className="p-8 text-center">
-            <div className="text-red-600">{error}</div>
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <Link
+                href="/auth?mode=login"
+                className="inline-flex items-center gap-2 rounded-xl border border-brown/20 bg-white px-4 py-2 text-sm font-medium text-brown transition hover:bg-brown/5"
+              >
+                Log In
+              </Link>
+              <Link
+                href="/auth?mode=signup"
+                className="inline-flex items-center gap-2 rounded-xl border border-brown/10 bg-gold/90 px-4 py-2 text-sm font-semibold text-brown transition hover:bg-gold"
+              >
+                Sign Up
+              </Link>
+            </div>
           </Card>
         ) : (
           <>

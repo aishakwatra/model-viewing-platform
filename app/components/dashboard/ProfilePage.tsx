@@ -9,7 +9,7 @@ import { Card } from "@/app/components/ui/Card";
 import { ProfilePictureUpload } from "@/app/components/profile/ProfilePictureUpload";
 import { PasswordChangeForm } from "@/app/components/profile/PasswordChangeForm";
 import { ProfileStats } from "@/app/components/profile/ProfileStats";
-import { getCurrentUser, saveCurrentUser } from "@/app/lib/auth";
+import { getCurrentUser, saveCurrentUser, logout } from "@/app/lib/auth";
 import {
   fetchUserProfile,
   updateUserProfile,
@@ -33,6 +33,8 @@ export function ProfileClientPage() {
     fullName: "",
     email: "",
   });
+  const [loggingOut, setLoggingOut] = useState(false);
+
   const [stats, setStats] = useState({
     projects: 0,
     favourites: 0,
@@ -161,6 +163,18 @@ export function ProfileClientPage() {
     }
   }
 
+  function handleLogout() {
+    if (loggingOut) return;
+
+    try {
+      setLoggingOut(true);
+      logout();
+      router.replace("/auth");
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   async function handlePasswordChange(currentPassword: string, newPassword: string) {
     if (!currentUser) return;
 
@@ -214,7 +228,7 @@ export function ProfileClientPage() {
         Back to Dashboard
       </Link>
 
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-brown md:text-3xl">
             Edit Account Information
@@ -223,11 +237,23 @@ export function ProfileClientPage() {
             Update your profile, contact details, and account settings.
           </p>
         </div>
-        <div className="flex size-16 items-center justify-center rounded-full bg-brown/10 text-lg font-semibold text-brown">
-          {formState.fullName
-            .split(" ")
-            .map((part) => part[0])
-            .join("")}
+        <div className="flex items-center gap-4">
+          <div className="flex size-16 items-center justify-center rounded-full bg-brown/10 text-lg font-semibold text-brown">
+            {formState.fullName
+              .split(" ")
+              .filter(Boolean)
+              .map((part) => part[0])
+              .slice(0, 2)
+              .join("") || "U"}
+          </div>
+          <Button
+            variant="outline"
+            className="rounded-xl border border-brown/20 px-4 py-2 text-sm font-medium text-brown transition hover:bg-brown/5"
+            onClick={handleLogout}
+            disabled={loggingOut}
+          >
+            {loggingOut ? "Logging out..." : "Log out"}
+          </Button>
         </div>
       </div>
 
