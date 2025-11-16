@@ -1,13 +1,13 @@
 import { supabase } from "./supabase";
 
 // Fetch projects accessible by a specific user (client)
-export async function fetchUserProjects(userId: number) {
+export async function fetchUserProjects(authUserId: string) {
   try {
     // Get project_clients entries for this user
     const { data: projectClients, error: pcError } = await supabase
       .from("project_clients")
       .select("project_id")
-      .eq("user_id", userId);
+      .eq("auth_user_id", authUserId);
 
     if (pcError) throw pcError;
 
@@ -63,7 +63,7 @@ export async function fetchUserProjects(userId: number) {
 }
 
 // Fetch user's favorite model versions
-export async function fetchUserFavourites(userId: number) {
+export async function fetchUserFavourites(authUserId: string) {
   try {
     const { data, error } = await supabase
       .from("user_favourites")
@@ -90,7 +90,7 @@ export async function fetchUserFavourites(userId: number) {
         )
       `
       )
-      .eq("user_id", userId);
+      .eq("auth_user_id", authUserId);
 
     if (error) throw error;
 
@@ -165,13 +165,13 @@ export async function fetchModelVersions(modelId: number) {
 }
 
 // Add or remove a favourite
-export async function toggleFavourite(userId: number, modelVersionId: number) {
+export async function toggleFavourite(authUserId: string, modelVersionId: number) {
   try {
     // Check if already favorited
     const { data: existing, error: checkError } = await supabase
       .from("user_favourites")
       .select("id")
-      .eq("user_id", userId)
+      .eq("auth_user_id", authUserId)
       .eq("model_version_id", modelVersionId)
       .single();
 
@@ -193,7 +193,7 @@ export async function toggleFavourite(userId: number, modelVersionId: number) {
       // Add favourite
       const { error: insertError } = await supabase
         .from("user_favourites")
-        .insert({ user_id: userId, model_version_id: modelVersionId });
+        .insert({ auth_user_id: authUserId, model_version_id: modelVersionId });
 
       if (insertError) throw insertError;
       return { action: "added" };

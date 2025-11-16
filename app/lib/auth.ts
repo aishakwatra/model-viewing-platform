@@ -239,10 +239,10 @@ export function getUserRole(): string | null {
 /**
  * Upload profile picture to Supabase Storage
  */
-export async function uploadProfilePicture(file: File, userId: number) {
+export async function uploadProfilePicture(file: File, authUserId: string) {
   try {
     const fileExt = file.name.split(".").pop();
-    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const fileName = `${authUserId}-${Date.now()}.${fileExt}`;
     const filePath = `profile-pictures/${fileName}`;
 
     const { data, error } = await supabase.storage

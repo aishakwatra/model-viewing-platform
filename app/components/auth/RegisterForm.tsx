@@ -42,7 +42,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
 
       // Upload profile picture if provided
       if (profilePicture) {
-        // Note: We'll upload after creating user to get user_id
+        // Note: We'll upload after creating user to get auth_user_id
         // For now, we'll create user first, then update with photo
       }
 

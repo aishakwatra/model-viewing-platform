@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { getCurrentUser, logout as logoutUser } from "@/app/lib/auth";
 
 interface User {
-  user_id: number;
+  auth_user_id: string;
   email: string;
   full_name: string | null;
   photo_url: string | null;

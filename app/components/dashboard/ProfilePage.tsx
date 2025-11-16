@@ -66,8 +66,8 @@ export function ProfileClientPage() {
       setCurrentUser(user);
 
       const [profile, statistics] = await Promise.all([
-        fetchUserProfile(user.user_id),
-        getUserStatistics(user.user_id),
+        fetchUserProfile(user.auth_user_id),
+        getUserStatistics(user.auth_user_id),
       ]);
 
       setUserProfile(profile);
@@ -100,7 +100,7 @@ export function ProfileClientPage() {
     setSuccess(null);
 
     try {
-      const result = await updateUserProfile(currentUser.user_id, {
+      const result = await updateUserProfile(currentUser.auth_user_id, {
         full_name: formState.fullName,
         email: formState.email,
       });
@@ -125,7 +125,7 @@ export function ProfileClientPage() {
     if (!currentUser) return;
 
     try {
-      const photoUrl = await uploadUserProfilePicture(currentUser.user_id, file);
+      const photoUrl = await uploadUserProfilePicture(currentUser.auth_user_id, file);
 
       // Update local state
       const updatedProfile = { ...userProfile!, photo_url: photoUrl };
@@ -146,7 +146,7 @@ export function ProfileClientPage() {
     if (!currentUser) return;
 
     try {
-      await deleteUserProfilePicture(currentUser.user_id);
+      await deleteUserProfilePicture(currentUser.auth_user_id);
 
       // Update local state
       const updatedProfile = { ...userProfile!, photo_url: null };
@@ -179,7 +179,7 @@ export function ProfileClientPage() {
     if (!currentUser) return;
 
     try {
-      await updateUserProfile(currentUser.user_id, {
+      await updateUserProfile(currentUser.auth_user_id, {
         current_password: currentPassword,
         new_password: newPassword,
       });

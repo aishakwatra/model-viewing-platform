@@ -58,7 +58,7 @@ interface FavouriteData {
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("projects");
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentAuthUserId, setCurrentAuthUserId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [favourites, setFavourites] = useState<FavouriteData[]>([]);
@@ -92,7 +92,7 @@ export default function ClientDashboard() {
       if (!user) {
         console.log("ℹ️ No authenticated user found. Showing guest view.");
         setCurrentUser(null);
-        setCurrentUserId(null);
+        setCurrentAuthUserId(null);
         setProjects([]);
         setFavourites([]);
         return;
@@ -100,10 +100,10 @@ export default function ClientDashboard() {
 
       console.log("✅ Authenticated user:", user);
       setCurrentUser(user);
-      setCurrentUserId(user.user_id);
+      setCurrentAuthUserId(user.auth_user_id);
 
       // Load user's projects and favourites
-      await loadUserData(user.user_id);
+      await loadUserData(user.auth_user_id);
     } catch (err) {
       console.error("Error initializing dashboard:", err);
       setError(err instanceof Error ? err.message : "Failed to initialize dashboard");
@@ -112,12 +112,12 @@ export default function ClientDashboard() {
     }
   }
 
-  async function loadUserData(userId: number) {
+  async function loadUserData(authUserId: string) {
     try {
-      console.log(`🔄 Loading data for user ID: ${userId}`);
+      console.log(`🔄 Loading data for auth user ID: ${authUserId}`);
       const [projectsData, favouritesData] = await Promise.all([
-        fetchUserProjects(userId),
-        fetchUserFavourites(userId),
+        fetchUserProjects(authUserId),
+        fetchUserFavourites(authUserId),
       ]);
       
       console.log(`✅ Loaded ${projectsData.length} projects and ${favouritesData.length} favourites`);
@@ -315,7 +315,7 @@ export default function ClientDashboard() {
               Retry
             </Button>
           </Card>
-        ) : !currentUserId ? (
+        ) : !currentAuthUserId ? (
           <Card className="p-8 text-center space-y-4">
             <div className="text-brown/70">
               <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto mb-4 size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 
 export interface PendingCreatorRequest {
-  user_id: number;
+  auth_user_id: string;
   email: string;
   full_name: string | null;
   created_at: string;
@@ -10,7 +10,7 @@ export interface PendingCreatorRequest {
 export async function fetchPendingRequests(): Promise<PendingCreatorRequest[]> {
   const { data, error } = await supabase
     .from("users")
-    .select("user_id, email, full_name, created_at")
+    .select("auth_user_id, email, full_name, created_at")
     .eq("user_role_id", 2);
 
   if (error) {
@@ -21,11 +21,11 @@ export async function fetchPendingRequests(): Promise<PendingCreatorRequest[]> {
   return data || [];
 }
 
-export async function approveUserRole(userId: number): Promise<void> {
+export async function approveUserRole(authUserId: string): Promise<void> {
   const { error } = await supabase
     .from("users")
     .update({ user_role_id: 3 })
-    .eq("user_id", userId);
+    .eq("auth_user_id", authUserId);
 
   if (error) {
     console.error("Failed to approve user role", error);
@@ -33,11 +33,11 @@ export async function approveUserRole(userId: number): Promise<void> {
   }
 }
 
-export async function rejectUserRole(userId: number): Promise<void> {
+export async function rejectUserRole(authUserId: string): Promise<void> {
   const { error } = await supabase
     .from("users")
     .delete()
-    .eq("user_id", userId);
+    .eq("auth_user_id", authUserId);
 
   if (error) {
     console.error("Failed to reject user role", error);

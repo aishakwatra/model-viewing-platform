@@ -6,11 +6,11 @@ import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 
 interface UserSelectorProps {
-  onUserSelect: (userId: number) => void;
-  currentUserId: number | null;
+  onUserSelect: (authUserId: string) => void;
+  currentAuthUserId: string | null;
 }
 
-export function UserSelector({ onUserSelect, currentUserId }: UserSelectorProps) {
+export function UserSelector({ onUserSelect, currentAuthUserId }: UserSelectorProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function UserSelector({ onUserSelect, currentUserId }: UserSelectorProps)
     }
   }
 
-  const currentUser = users.find((u) => u.user_id === currentUserId);
+  const currentUser = users.find((u) => u.auth_user_id === currentAuthUserId);
 
   return (
     <div className="relative">
@@ -59,7 +59,7 @@ export function UserSelector({ onUserSelect, currentUserId }: UserSelectorProps)
         </svg>
         {currentUser ? (
           <span>
-            {currentUser.full_name || currentUser.email} (ID: {currentUser.user_id})
+            {currentUser.full_name || currentUser.email}
           </span>
         ) : (
           <span>Select User</span>
@@ -83,14 +83,14 @@ export function UserSelector({ onUserSelect, currentUserId }: UserSelectorProps)
               <div className="space-y-1">
                 {users.map((user) => (
                   <button
-                    key={user.user_id}
+                    key={user.auth_user_id}
                     onClick={() => {
-                      onUserSelect(user.user_id);
+                      onUserSelect(user.auth_user_id);
                       setIsOpen(false);
                     }}
                     className={[
                       "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                      currentUserId === user.user_id
+                      currentAuthUserId === user.auth_user_id
                         ? "bg-brown text-white"
                         : "hover:bg-brown/10",
                     ].join(" ")}
@@ -99,7 +99,6 @@ export function UserSelector({ onUserSelect, currentUserId }: UserSelectorProps)
                       {user.full_name || "No name"}
                     </div>
                     <div className="text-xs opacity-70">{user.email}</div>
-                    <div className="text-xs opacity-50">User ID: {user.user_id}</div>
                   </button>
                 ))}
               </div>

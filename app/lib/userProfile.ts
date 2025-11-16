@@ -2,7 +2,7 @@ import { supabase } from "./supabase";
 import bcrypt from "bcryptjs";
 
 export interface UserProfile {
-  user_id: number;
+  auth_user_id: string;
   email: string;
   full_name: string | null;
   photo_url: string | null;
@@ -22,15 +22,15 @@ export interface ProfileUpdateData {
 }
 
 /**
- * Fetch user profile by user ID
+ * Fetch user profile by auth user ID
  */
-export async function fetchUserProfile(userId: number): Promise<UserProfile> {
+export async function fetchUserProfile(authUserId: string): Promise<UserProfile> {
   try {
     // Fetch user data
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("user_id, email, full_name, photo_url, user_role_id, created_at")
-      .eq("user_id", userId)
+      .select("auth_user_id, email, full_name, photo_url, user_role_id, created_at")
+      .eq("auth_user_id", authUserId)
       .single();
 
     if (userError) {
@@ -70,11 +70,11 @@ export async function fetchUserProfile(userId: number): Promise<UserProfile> {
  * Update user profile - Simplified approach
  */
 export async function updateUserProfile(
-  userId: number,
+  authUserId: string,
   updates: ProfileUpdateData
 ): Promise<{ success: boolean; message: string; user?: UserProfile }> {
   try {
-    console.log("🔄 Starting profile update for user:", userId);
+    console.log("🔄 Starting profile update for user:", authUserId);
     console.log("📝 Updates received:", { ...updates, current_password: "***", new_password: updates.new_password ? "***" : undefined });
 
     // Step 1: Handle password change if requested
@@ -87,7 +87,7 @@ export async function updateUserProfile(
       const { data: currentUser, error: fetchError } = await supabase
         .from("users")
         .select("password_hash")
-        .eq("user_id", userId)
+        .eq("auth_user_id", authUserId)
         .single();
 
       if (fetchError) {
@@ -117,7 +117,7 @@ export async function updateUserProfile(
       const { error: passwordUpdateError } = await supabase
         .from("users")
         .update({ password_hash: newPasswordHash })
-        .eq("user_id", userId);
+        .eq("auth_user_id", authUserId);
 
       if (passwordUpdateError) {
         console.error("❌ Error updating password:", passwordUpdateError);
@@ -131,9 +131,9 @@ export async function updateUserProfile(
     if (updates.email) {
       const { data: existingUser, error: emailCheckError } = await supabase
         .from("users")
-        .select("user_id")
+        .select("auth_user_id")
         .eq("email", updates.email)
-        .neq("user_id", userId)
+        .neq("auth_user_id", authUserId)
         .maybeSingle();
 
       if (emailCheckError) {
@@ -166,7 +166,7 @@ export async function updateUserProfile(
       const { error: profileUpdateError } = await supabase
         .from("users")
         .update(profileFields)
-        .eq("user_id", userId);
+        .eq("auth_user_id", authUserId);
 
       if (profileUpdateError) {
         console.error("❌ Error updating profile fields:", profileUpdateError);
@@ -179,8 +179,8 @@ export async function updateUserProfile(
     // Step 4: Fetch updated user data
     const { data: updatedUser, error: fetchUpdatedError } = await supabase
       .from("users")
-      .select("user_id, email, full_name, photo_url, user_role_id, created_at")
-      .eq("user_id", userId)
+      .select("auth_user_id, email, full_name, photo_url, user_role_id, created_at")
+      .eq("auth_user_id", authUserId)
       .single();
 
     if (fetchUpdatedError) {
@@ -231,12 +231,12 @@ export async function updateUserProfile(
  * Upload user profile picture
  */
 export async function uploadUserProfilePicture(
-  userId: number,
+  authUserId: string,
   file: File
 ): Promise<string> {
   try {
     const fileExt = file.name.split(".").pop();
-    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const fileName = `${authUserId}-${Date.now()}.${fileExt}`;
     const filePath = `profile-pictures/${fileName}`;
 
     // Upload file to Supabase Storage
@@ -258,7 +258,7 @@ export async function uploadUserProfilePicture(
     const { error: updateError } = await supabase
       .from("users")
       .update({ photo_url: publicUrl })
-      .eq("user_id", userId);
+      .eq("auth_user_id", authUserId);
 
     if (updateError) throw updateError;
 
@@ -272,13 +272,13 @@ export async function uploadUserProfilePicture(
 /**
  * Delete user profile picture
  */
-export async function deleteUserProfilePicture(userId: number): Promise<void> {
+export async function deleteUserProfilePicture(authUserId: string): Promise<void> {
   try {
     // Get current photo URL
     const { data: user } = await supabase
       .from("users")
       .select("photo_url")
-      .eq("user_id", userId)
+      .eq("auth_user_id", authUserId)
       .single();
 
     if (user?.photo_url) {
@@ -294,7 +294,7 @@ export async function deleteUserProfilePicture(userId: number): Promise<void> {
     await supabase
       .from("users")
       .update({ photo_url: null })
-      .eq("user_id", userId);
+      .eq("auth_user_id", authUserId);
   } catch (error) {
     console.error("Error deleting profile picture:", error);
     throw error;
@@ -304,26 +304,26 @@ export async function deleteUserProfilePicture(userId: number): Promise<void> {
 /**
  * Get user statistics (for profile page)
  */
-export async function getUserStatistics(userId: number) {
+export async function getUserStatistics(authUserId: string) {
   try {
     const [projectsCount, favouritesCount, commentsCount] = await Promise.all([
       // Count projects user has access to (for clients) or created (for creators)
       supabase
         .from("project_clients")
         .select("*", { count: "exact", head: true })
-        .eq("user_id", userId),
+        .eq("auth_user_id", authUserId),
 
       // Count favourites
       supabase
         .from("user_favourites")
         .select("*", { count: "exact", head: true })
-        .eq("user_id", userId),
+        .eq("auth_user_id", authUserId),
 
       // Count comments
       supabase
         .from("comments")
         .select("*", { count: "exact", head: true })
-        .eq("user_id", userId),
+        .eq("auth_user_id", authUserId),
     ]);
 
     return {

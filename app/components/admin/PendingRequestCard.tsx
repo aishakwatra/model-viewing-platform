@@ -3,7 +3,7 @@
 import { Button } from "@/app/components/ui/Button";
 
 export interface PendingRequest {
-  user_id: number;
+  auth_user_id: string;
   email: string;
   full_name: string | null;
   created_at: string;
@@ -11,8 +11,8 @@ export interface PendingRequest {
 
 interface PendingRequestCardProps {
   request: PendingRequest;
-  onApprove: (userId: number) => Promise<void>;
-  onReject: (userId: number) => Promise<void>;
+  onApprove: (authUserId: string) => Promise<void>;
+  onReject: (authUserId: string) => Promise<void>;
   isProcessing?: boolean;
   processingAction?: "approve" | "reject" | null;
 }
@@ -49,7 +49,7 @@ export function PendingRequestCard({
         <Button
           variant="gold"
           className="h-9 px-3 text-xs"
-          onClick={() => onApprove(request.user_id)}
+          onClick={() => onApprove(request.auth_user_id)}
           disabled={isProcessing}
         >
           {isApproving ? "Approving..." : "Approve"}
@@ -57,7 +57,7 @@ export function PendingRequestCard({
         <Button
           variant="outline"
           className="h-9 px-3 text-xs text-red-600 border-red-200 hover:bg-red-50"
-          onClick={() => onReject(request.user_id)}
+          onClick={() => onReject(request.auth_user_id)}
           disabled={isProcessing}
         >
           {isRejecting ? "Rejecting..." : "Reject"}

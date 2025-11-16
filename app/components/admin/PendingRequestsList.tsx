@@ -7,15 +7,15 @@ import { PendingRequestCard, PendingRequest } from "./PendingRequestCard";
 
 interface PendingRequestsListProps {
   fetchRequests: () => Promise<PendingRequest[]>;
-  approveRequest: (userId: number) => Promise<void>;
-  rejectRequest: (userId: number) => Promise<void>;
+  approveRequest: (authUserId: string) => Promise<void>;
+  rejectRequest: (authUserId: string) => Promise<void>;
 }
 
 export function PendingRequestsList({ fetchRequests, approveRequest, rejectRequest }: PendingRequestsListProps) {
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<"approve" | "reject" | null>(null);
 
   const loadRequests = useCallback(async () => {
@@ -37,11 +37,11 @@ export function PendingRequestsList({ fetchRequests, approveRequest, rejectReque
     loadRequests();
   }, [loadRequests]);
 
-  const handleApprove = async (userId: number) => {
-    setProcessingId(userId);
+  const handleApprove = async (authUserId: string) => {
+    setProcessingId(authUserId);
     setProcessingAction("approve");
     try {
-      await approveRequest(userId);
+      await approveRequest(authUserId);
       await loadRequests();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to approve request");
@@ -50,11 +50,11 @@ export function PendingRequestsList({ fetchRequests, approveRequest, rejectReque
     }
   };
 
-  const handleReject = async (userId: number) => {
-    setProcessingId(userId);
+  const handleReject = async (authUserId: string) => {
+    setProcessingId(authUserId);
     setProcessingAction("reject");
     try {
-      await rejectRequest(userId);
+      await rejectRequest(authUserId);
       await loadRequests();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to reject request");
@@ -101,11 +101,11 @@ export function PendingRequestsList({ fetchRequests, approveRequest, rejectReque
       </div>
       {requests.map((request) => (
         <PendingRequestCard
-          key={request.user_id}
+          key={request.auth_user_id}
           request={request}
           onApprove={handleApprove}
           onReject={handleReject}
-          isProcessing={processingId === request.user_id}
+          isProcessing={processingId === request.auth_user_id}
           processingAction={processingAction}
         />
       ))}
