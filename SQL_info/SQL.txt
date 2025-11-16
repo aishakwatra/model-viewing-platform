@@ -7,6 +7,7 @@ CREATE TABLE public.comments (
   comment_text text NOT NULL,
   created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
   user_id integer NOT NULL,
+  auth_user_id uuid,
   CONSTRAINT comments_pkey PRIMARY KEY (id),
   CONSTRAINT comments_model_version_id_fkey FOREIGN KEY (model_version_id) REFERENCES public.model_versions(id),
   CONSTRAINT comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id)
@@ -29,6 +30,7 @@ CREATE TABLE public.model_logs (
   log_text text,
   created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
   user_id integer NOT NULL,
+  auth_user_id uuid,
   CONSTRAINT model_logs_pkey PRIMARY KEY (id),
   CONSTRAINT model_logs_model_id_fkey FOREIGN KEY (model_id) REFERENCES public.models(id),
   CONSTRAINT model_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id)
@@ -72,6 +74,7 @@ CREATE TABLE public.portfolio_pages (
   id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   portfolio_page_name character varying NOT NULL,
   creator_id integer NOT NULL,
+  auth_user_id uuid,
   CONSTRAINT portfolio_pages_pkey PRIMARY KEY (id),
   CONSTRAINT portfolio_pages_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.users(user_id)
 );
@@ -79,6 +82,7 @@ CREATE TABLE public.project_clients (
   id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   project_id integer NOT NULL,
   user_id integer NOT NULL,
+  auth_user_id uuid,
   CONSTRAINT project_clients_pkey PRIMARY KEY (id),
   CONSTRAINT project_clients_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id),
   CONSTRAINT project_clients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id)
@@ -94,6 +98,7 @@ CREATE TABLE public.projects (
   event_start_date date,
   project_status_id integer NOT NULL,
   creator_id integer NOT NULL,
+  auth_user_id uuid,
   CONSTRAINT projects_pkey PRIMARY KEY (id),
   CONSTRAINT projects_project_status_id_fkey FOREIGN KEY (project_status_id) REFERENCES public.project_status(id),
   CONSTRAINT projects_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES public.users(user_id)
@@ -102,6 +107,7 @@ CREATE TABLE public.user_favourites (
   id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   model_version_id integer NOT NULL,
   user_id integer NOT NULL,
+  auth_user_id uuid,
   CONSTRAINT user_favourites_pkey PRIMARY KEY (id),
   CONSTRAINT user_favourites_model_version_id_fkey FOREIGN KEY (model_version_id) REFERENCES public.model_versions(id),
   CONSTRAINT user_favourites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id)
@@ -119,6 +125,7 @@ CREATE TABLE public.users (
   full_name character varying,
   photo_url character varying,
   created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  auth_user_id uuid,
   CONSTRAINT users_pkey PRIMARY KEY (user_id),
   CONSTRAINT users_user_role_id_fkey FOREIGN KEY (user_role_id) REFERENCES public.user_roles(id)
 );
