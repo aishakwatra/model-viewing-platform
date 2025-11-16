@@ -6,6 +6,12 @@ import { Button } from "@/app/components/ui/Button";
 import { Card } from "@/app/components/ui/Card";
 import { Modal } from "@/app/components/ui/Confirm";
 import { Tabs } from "@/app/components/Tabs";
+import { PendingRequestsList } from "@/app/components/admin/PendingRequestsList";
+import {
+  fetchPendingRequests,
+  approveUserRole,
+  rejectUserRole,
+} from "@/app/lib/admin";
 
 // Helper Icon Components
 const RequestsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>;
@@ -92,28 +98,14 @@ export default function AdminDashboard() {
         </div>
 
         {activeTab === "requests" && (
-          <Card className="p-4 space-y-4">
+          <div className="space-y-4">
             <h2 className="text-lg font-semibold text-brown">Pending Account Requests</h2>
-            <div className="grid grid-cols-12 border-b border-brown/10 bg-brown/5 px-4 py-3 text-xs font-semibold text-brown">
-              <div className="col-span-3">Name</div>
-              <div className="col-span-3">Email</div>
-              <div className="col-span-2">Role</div>
-              <div className="col-span-2">Requested Date</div>
-              <div className="col-span-2 text-right">Actions</div>
-            </div>
-            {requests.map((r) => (
-              <div key={r.id} className="grid grid-cols-12 items-center px-4 py-3">
-                <div className="col-span-3 text-sm text-brown">{r.name}</div>
-                <div className="col-span-3 text-sm text-brown/80">{r.email}</div>
-                <div className="col-span-2"><RoleBadge role={r.role} /></div>
-                <div className="col-span-2 text-sm text-brown/80">{r.requestedDate}</div>
-                <div className="col-span-2 flex justify-end gap-2">
-                  <Button variant="gold" className="h-9 px-3 text-xs">Approve</Button>
-                  <Button variant="outline" className="h-9 px-3 text-xs text-red-600 border-red-200 hover:bg-red-50">Reject</Button>
-                </div>
-              </div>
-            ))}
-          </Card>
+            <PendingRequestsList
+              fetchRequests={fetchPendingRequests}
+              approveRequest={approveUserRole}
+              rejectRequest={rejectUserRole}
+            />
+          </div>
         )}
 
         {activeTab === "users" && (
