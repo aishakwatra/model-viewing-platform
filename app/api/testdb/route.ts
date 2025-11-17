@@ -4,7 +4,7 @@ import { createClient } from "../../../lib/supabase/server";
 import { cookies } from "next/headers";
 
 export async function GET(req:NextRequest){
-    const cookieStore = await cookies();
+    const cookieStore:any = await cookies();
     const supabase = createClient(cookieStore);
 
     const {data: allProjects, error } = await supabase. from ('projects')
