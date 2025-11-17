@@ -2,17 +2,21 @@
 
 import { Button } from "@/app/components/ui/Button";
 
-export interface PendingRequest {
-  auth_user_id: string;
+export interface PendingApprovalUser {
+  user_id: number;
+  auth_user_id: string | null;
   email: string;
   full_name: string | null;
   created_at: string;
+  user_roles: {
+    role: string;
+  } | null;
 }
 
 interface PendingRequestCardProps {
-  request: PendingRequest;
-  onApprove: (authUserId: string) => Promise<void>;
-  onReject: (authUserId: string) => Promise<void>;
+  request: PendingApprovalUser;
+  onApprove: (userId: number) => Promise<void>;
+  onReject: (userId: number) => Promise<void>;
   isProcessing?: boolean;
   processingAction?: "approve" | "reject" | null;
 }
@@ -38,7 +42,9 @@ export function PendingRequestCard({
         <p className="text-sm text-brown/80">{request.email}</p>
       </div>
       <div className="col-span-2">
-        <p className="text-sm text-brown/80">Creator</p>
+        <p className="text-sm text-brown/80">
+          {request.user_roles?.role ? request.user_roles.role.charAt(0).toUpperCase() + request.user_roles.role.slice(1) : "Unknown"}
+        </p>
       </div>
       <div className="col-span-2">
         <p className="text-sm text-brown/80">
@@ -49,7 +55,7 @@ export function PendingRequestCard({
         <Button
           variant="gold"
           className="h-9 px-3 text-xs"
-          onClick={() => onApprove(request.auth_user_id)}
+          onClick={() => onApprove(request.user_id)}
           disabled={isProcessing}
         >
           {isApproving ? "Approving..." : "Approve"}
@@ -57,7 +63,7 @@ export function PendingRequestCard({
         <Button
           variant="outline"
           className="h-9 px-3 text-xs text-red-600 border-red-200 hover:bg-red-50"
-          onClick={() => onReject(request.auth_user_id)}
+          onClick={() => onReject(request.user_id)}
           disabled={isProcessing}
         >
           {isRejecting ? "Rejecting..." : "Reject"}

@@ -8,9 +8,9 @@ import { Modal } from "@/app/components/ui/Confirm";
 import { Tabs } from "@/app/components/Tabs";
 import { PendingRequestsList } from "@/app/components/admin/PendingRequestsList";
 import {
-  fetchPendingRequests,
-  approveUserRole,
-  rejectUserRole,
+  fetchUnapprovedUsers,
+  approveUser,
+  rejectUser,
 } from "@/app/lib/admin";
 
 // Helper Icon Components
@@ -101,9 +101,9 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-brown">Pending Account Requests</h2>
             <PendingRequestsList
-              fetchRequests={fetchPendingRequests}
-              approveRequest={approveUserRole}
-              rejectRequest={rejectUserRole}
+              fetchRequests={fetchUnapprovedUsers}
+              approveRequest={approveUser}
+              rejectRequest={rejectUser}
             />
           </div>
         )}

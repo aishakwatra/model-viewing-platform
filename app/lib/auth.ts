@@ -11,11 +11,11 @@ export interface SignUpData {
 export type UserRole = "user" | "creator";
 
 // Role IDs based on your schema (adjust these based on your actual user_roles table)
-// From earlier conversation: id=1 admin, id=2 pending, id=3 approved
+// Ensure these stay in sync with the values stored in public.user_roles
 const ROLE_IDS = {
-  user: 3, // Approved user/client
-  creator: 2, // Creator (pending approval)
-  admin: 1, // Admin
+  user: 3,
+  creator: 2,
+  admin: 1,
 };
 
 /**
@@ -71,6 +71,7 @@ export async function signUp(userData: SignUpData, role: UserRole = "user") {
         full_name: fullName,
         photo_url: photoUrl || null,
         user_role_id: roleId,
+        is_approved: false,
       })
       .select()
       .single();
@@ -86,10 +87,7 @@ export async function signUp(userData: SignUpData, role: UserRole = "user") {
       success: true,
       user: newUser,
       authUser: authData.user,
-      message:
-        role === "creator"
-          ? "Account created! Creator accounts may require approval."
-          : "Account created successfully!",
+      message: "Account created! Waiting for admin approval.",
     };
   } catch (error) {
     console.error("Sign up error:", error);

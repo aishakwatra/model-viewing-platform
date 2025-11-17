@@ -1,46 +1,52 @@
 import { supabase } from "./supabase";
 
-export interface PendingCreatorRequest {
-  auth_user_id: string;
+export interface PendingApprovalUser {
+  user_id: number;
+  auth_user_id: string | null;
   email: string;
   full_name: string | null;
   created_at: string;
+  user_roles: {
+    role: string;
+  } | null;
 }
 
-export async function fetchPendingRequests(): Promise<PendingCreatorRequest[]> {
+export async function fetchUnapprovedUsers(): Promise<PendingApprovalUser[]> {
   const { data, error } = await supabase
     .from("users")
-    .select("auth_user_id, email, full_name, created_at")
-    .eq("user_role_id", 2);
+    .select(
+      `user_id, auth_user_id, email, full_name, created_at, user_roles(role)`
+    )
+    .eq("is_approved", false);
 
   if (error) {
-    console.error("Failed to fetch pending requests", error);
+    console.error("Failed to fetch unapproved users", error);
     throw error;
   }
 
-  return data || [];
+  return (data || []) as PendingApprovalUser[];
 }
 
-export async function approveUserRole(authUserId: string): Promise<void> {
+export async function approveUser(userId: number): Promise<void> {
   const { error } = await supabase
     .from("users")
-    .update({ user_role_id: 3 })
-    .eq("auth_user_id", authUserId);
+    .update({ is_approved: true })
+    .eq("user_id", userId);
 
   if (error) {
-    console.error("Failed to approve user role", error);
+    console.error("Failed to approve user", error);
     throw error;
   }
 }
 
-export async function rejectUserRole(authUserId: string): Promise<void> {
+export async function rejectUser(userId: number): Promise<void> {
   const { error } = await supabase
     .from("users")
     .delete()
-    .eq("auth_user_id", authUserId);
+    .eq("user_id", userId);
 
   if (error) {
-    console.error("Failed to reject user role", error);
+    console.error("Failed to reject user", error);
     throw error;
   }
 }

@@ -3,19 +3,19 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
-import { PendingRequestCard, PendingRequest } from "./PendingRequestCard";
+import { PendingRequestCard, PendingApprovalUser } from "./PendingRequestCard";
 
 interface PendingRequestsListProps {
-  fetchRequests: () => Promise<PendingRequest[]>;
-  approveRequest: (authUserId: string) => Promise<void>;
-  rejectRequest: (authUserId: string) => Promise<void>;
+  fetchRequests: () => Promise<PendingApprovalUser[]>;
+  approveRequest: (userId: number) => Promise<void>;
+  rejectRequest: (userId: number) => Promise<void>;
 }
 
 export function PendingRequestsList({ fetchRequests, approveRequest, rejectRequest }: PendingRequestsListProps) {
-  const [requests, setRequests] = useState<PendingRequest[]>([]);
+  const [requests, setRequests] = useState<PendingApprovalUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<number | null>(null);
   const [processingAction, setProcessingAction] = useState<"approve" | "reject" | null>(null);
 
   const loadRequests = useCallback(async () => {
@@ -37,11 +37,11 @@ export function PendingRequestsList({ fetchRequests, approveRequest, rejectReque
     loadRequests();
   }, [loadRequests]);
 
-  const handleApprove = async (authUserId: string) => {
-    setProcessingId(authUserId);
+  const handleApprove = async (userId: number) => {
+    setProcessingId(userId);
     setProcessingAction("approve");
     try {
-      await approveRequest(authUserId);
+      await approveRequest(userId);
       await loadRequests();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to approve request");
@@ -50,11 +50,11 @@ export function PendingRequestsList({ fetchRequests, approveRequest, rejectReque
     }
   };
 
-  const handleReject = async (authUserId: string) => {
-    setProcessingId(authUserId);
+  const handleReject = async (userId: number) => {
+    setProcessingId(userId);
     setProcessingAction("reject");
     try {
-      await rejectRequest(authUserId);
+      await rejectRequest(userId);
       await loadRequests();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to reject request");
@@ -85,7 +85,7 @@ export function PendingRequestsList({ fetchRequests, approveRequest, rejectReque
   if (requests.length === 0) {
     return (
       <Card className="p-6 text-center text-brown/70">
-        No pending creator requests at the moment.
+        No unapproved accounts at the moment.
       </Card>
     );
   }
@@ -101,11 +101,11 @@ export function PendingRequestsList({ fetchRequests, approveRequest, rejectReque
       </div>
       {requests.map((request) => (
         <PendingRequestCard
-          key={request.auth_user_id}
+          key={request.user_id}
           request={request}
           onApprove={handleApprove}
           onReject={handleReject}
-          isProcessing={processingId === request.auth_user_id}
+          isProcessing={processingId === request.user_id}
           processingAction={processingAction}
         />
       ))}
