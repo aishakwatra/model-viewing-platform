@@ -10,7 +10,7 @@ import { ModelViewer } from "@/app/components/ModelViewer";
 
 export default function ModelsPage() {
   
-  const modelPathFromDatabase = "https://tgehstwommpuufttddhg.supabase.co/storage/v1/object/public/Models/sample1/scene.gltf"; 
+  const modelPathFromDatabase = "/models/sample1/scene.gltf"; 
 
   return (
     <div className="bg-beige min-h-screen pb-12">

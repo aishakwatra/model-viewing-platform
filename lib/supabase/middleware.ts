@@ -39,13 +39,11 @@ export async function updateSession(request: NextRequest) {
 
   if (
     !user &&
-    (request.nextUrl.pathname.startsWith("/creator/dashboard") ||
-     request.nextUrl.pathname.startsWith("/P_ClientDashboard") ||
-     request.nextUrl.pathname.startsWith("/P_AdminDashboard"))
+    (request.nextUrl.pathname.startsWith("/profile") )
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
-    url.pathname = '/auth'
+    url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
