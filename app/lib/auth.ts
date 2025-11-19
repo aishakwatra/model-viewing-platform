@@ -124,6 +124,7 @@ export async function signIn(email: string, password: string) {
         photo_url,
         user_role_id,
         created_at,
+        is_approved,
         user_roles (
           role
         )
@@ -134,6 +135,11 @@ export async function signIn(email: string, password: string) {
 
     if (fetchError || !user) {
       throw new Error("User profile not found");
+    }
+
+    // Check if user is approved
+    if (!user.is_approved) {
+      throw new Error("Your account is pending approval. Please wait for an administrator to approve your account.");
     }
 
     // Return user data with auth session
@@ -180,6 +186,7 @@ export async function getCurrentAuthUser() {
         photo_url,
         user_role_id,
         created_at,
+        is_approved,
         user_roles (
           role
         )

@@ -67,7 +67,7 @@ export function ProfileClientPage() {
 
       const [profile, statistics] = await Promise.all([
         fetchUserProfile(user.auth_user_id),
-        getUserStatistics(user.auth_user_id),
+        getUserStatistics(user.user_id),
       ]);
 
       setUserProfile(profile);
