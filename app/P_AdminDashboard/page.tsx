@@ -1,7 +1,7 @@
 // app/P_AdminDashboard/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/app/components/ui/Button";
 import { Card } from "@/app/components/ui/Card";
 import { Modal } from "@/app/components/ui/Confirm";
@@ -12,6 +12,14 @@ import {
   approveUser,
   rejectUser,
 } from "@/app/lib/admin";
+import { ModelCategory, supabase } from "@/app/lib/supabase";
+
+type ManageCategoryAction = "create" | "read" | "update" | "delete";
+
+interface ManageCategoryRequest {
+  id?: number;
+  model_category?: string;
+}
 
 // Helper Icon Components
 const RequestsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>;
@@ -31,10 +39,218 @@ export default function AdminDashboard() {
     { id: 1, name: "Sarah Johnson", email: "sarah.j@email.com", role: "Client", status: "Active", projects: 12, functions: 45, initials: "SJ" },
     { id: 2, name: "Michael Chen", email: "m.chen@email.com", role: "Creator", status: "Active", projects: 8, functions: 32, initials: "MC" },
   ];
-  const categories = [
-    { id: 1, name: "Wedding Ceremony", description: "Ceremonial events and decorations", functions: 24 },
-    { id: 2, name: "Corporate Events", description: "Business meetings and conferences", functions: 18 },
-  ];
+  const [categories, setCategories] = useState<ModelCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [categoryActionLoading, setCategoryActionLoading] = useState<boolean>(false);
+  const [categoryActionTargetId, setCategoryActionTargetId] = useState<number | null>(null);
+  const [categoryActionType, setCategoryActionType] = useState<ManageCategoryAction | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<ModelCategory | null>(null);
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+
+  const manageCategories = useCallback(
+    async (
+      action: ManageCategoryAction,
+      data?: ManageCategoryRequest
+    ): Promise<ModelCategory | ModelCategory[] | number> => {
+      switch (action) {
+        case "create": {
+          const rawName = data?.model_category?.trim();
+          if (!rawName) {
+            throw new Error("Category name is required.");
+          }
+          const { data: createdCategory, error } = await supabase
+            .from("model_categories")
+            .insert({ model_category: rawName })
+            .select()
+            .single();
+          if (error) {
+            throw error;
+          }
+          return createdCategory as ModelCategory;
+        }
+        case "read": {
+          const { data: categoryList, error } = await supabase
+            .from("model_categories")
+            .select("*")
+            .order("model_category", { ascending: true });
+          if (error) {
+            throw error;
+          }
+          return (categoryList || []) as ModelCategory[];
+        }
+        case "update": {
+          if (!data?.id) {
+            throw new Error("Category id is required.");
+          }
+          const rawName = data.model_category?.trim();
+          if (!rawName) {
+            throw new Error("Category name is required.");
+          }
+          const { data: updatedCategory, error } = await supabase
+            .from("model_categories")
+            .update({ model_category: rawName })
+            .eq("id", data.id)
+            .select()
+            .single();
+          if (error) {
+            throw error;
+          }
+          return updatedCategory as ModelCategory;
+        }
+        case "delete": {
+          if (!data?.id) {
+            throw new Error("Category id is required.");
+          }
+          const { error } = await supabase
+            .from("model_categories")
+            .delete()
+            .eq("id", data.id);
+          if (error) {
+            throw error;
+          }
+          return data.id;
+        }
+        default:
+          throw new Error(`Unsupported action: ${action}`);
+      }
+    },
+    []
+  );
+
+  const loadCategories = useCallback(async () => {
+    setCategoriesLoading(true);
+    setCategoriesError(null);
+    try {
+      const categoryList = (await manageCategories("read")) as ModelCategory[];
+      setCategories(categoryList);
+    } catch (error) {
+      setCategoriesError(
+        error instanceof Error ? error.message : "Failed to load categories."
+      );
+      setCategories([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, [manageCategories]);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  const handleCreateCategory = async () => {
+    const trimmedName = newCategoryName.trim();
+    if (!trimmedName) {
+      setCategoriesError("Category name cannot be empty.");
+      return;
+    }
+    setCategoryActionType("create");
+    setCategoryActionTargetId(null);
+    setCategoryActionLoading(true);
+    setCategoriesError(null);
+    try {
+      const createdCategory = (await manageCategories("create", {
+        model_category: trimmedName,
+      })) as ModelCategory;
+      setCategories((prev) =>
+        [...prev, createdCategory].sort((a, b) =>
+          a.model_category.localeCompare(b.model_category)
+        )
+      );
+      setNewCategoryName("");
+    } catch (error) {
+      setCategoriesError(
+        error instanceof Error ? error.message : "Failed to create category."
+      );
+    } finally {
+      setCategoryActionLoading(false);
+      setCategoryActionType(null);
+      setCategoryActionTargetId(null);
+    }
+  };
+
+  const handleStartEditingCategory = (category: ModelCategory) => {
+    setEditingCategoryId(category.id);
+    setEditingCategoryName(category.model_category);
+    setCategoriesError(null);
+  };
+
+  const handleCancelEditingCategory = () => {
+    setEditingCategoryId(null);
+    setEditingCategoryName("");
+  };
+
+  const handleUpdateCategory = async () => {
+    if (editingCategoryId === null) {
+      return;
+    }
+    const trimmedName = editingCategoryName.trim();
+    if (!trimmedName) {
+      setCategoriesError("Category name cannot be empty.");
+      return;
+    }
+    setCategoryActionType("update");
+    setCategoryActionTargetId(editingCategoryId);
+    setCategoryActionLoading(true);
+    setCategoriesError(null);
+    try {
+      const updatedCategory = (await manageCategories("update", {
+        id: editingCategoryId,
+        model_category: trimmedName,
+      })) as ModelCategory;
+      setCategories((prev) =>
+        prev
+          .map((category) =>
+            category.id === updatedCategory.id ? updatedCategory : category
+          )
+          .sort((a, b) => a.model_category.localeCompare(b.model_category))
+      );
+      handleCancelEditingCategory();
+    } catch (error) {
+      setCategoriesError(
+        error instanceof Error ? error.message : "Failed to update category."
+      );
+    } finally {
+      setCategoryActionLoading(false);
+      setCategoryActionType(null);
+      setCategoryActionTargetId(null);
+    }
+  };
+
+  const handlePromptDeleteCategory = (category: ModelCategory) => {
+    setCategoryToDelete(category);
+    setDeleteModalOpen(true);
+    setCategoriesError(null);
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!categoryToDelete || categoryActionLoading) {
+      return;
+    }
+    setCategoryActionType("delete");
+    setCategoryActionTargetId(categoryToDelete.id);
+    setCategoryActionLoading(true);
+    setCategoriesError(null);
+    try {
+      await manageCategories("delete", { id: categoryToDelete.id });
+      setCategories((prev) =>
+        prev.filter((category) => category.id !== categoryToDelete.id)
+      );
+      setDeleteModalOpen(false);
+      setCategoryToDelete(null);
+    } catch (error) {
+      setCategoriesError(
+        error instanceof Error ? error.message : "Failed to delete category."
+      );
+    } finally {
+      setCategoryActionLoading(false);
+      setCategoryActionType(null);
+      setCategoryActionTargetId(null);
+    }
+  };
 
   const tabs = useMemo(() => [
     { key: "requests", label: "Requests", icon: <RequestsIcon /> },
@@ -146,17 +362,129 @@ export default function AdminDashboard() {
         {activeTab === "categories" && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-brown">Function Categories</h2>
-            <div className="flex gap-3"><input type="text" placeholder="Add new category..." className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" /><Button variant="brown" className="gap-2"><UsersIcon /> Add Category</Button></div>
-            <div className="grid gap-4">
-              {categories.map((c) => (
-                <Card key={c.id} className="flex items-center justify-between gap-4 p-4">
-                  <div><h3 className="text-sm font-semibold text-brown">{c.name}</h3><p className="mt-1 text-sm text-brown/70">{c.description}</p></div>
-                  <div className="flex items-center gap-2"><Button variant="outline" className="gap-1 px-3 py-1 text-xs">Edit</Button><Button variant="outline" className="gap-1 px-3 py-1 text-xs text-red-600 border-red-200 hover:bg-red-50">Delete</Button></div>
-                </Card>
-              ))}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                type="text"
+                placeholder="Add new category..."
+                value={newCategoryName}
+                onChange={(event) => setNewCategoryName(event.target.value)}
+                className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
+                disabled={categoryActionLoading && categoryActionType === "create"}
+              />
+              <Button
+                variant="brown"
+                className="gap-2"
+                onClick={handleCreateCategory}
+                disabled={categoryActionLoading || !newCategoryName.trim()}
+              >
+                <UsersIcon />
+                {categoryActionLoading && categoryActionType === "create" ? "Adding..." : "Add Category"}
+              </Button>
             </div>
+            {categoriesError && (
+              <div className="text-sm text-red-600">{categoriesError}</div>
+            )}
+            {categoriesLoading ? (
+              <Card className="p-4 text-sm text-brown/70">Loading categories...</Card>
+            ) : categories.length === 0 ? (
+              <Card className="p-4 text-sm text-brown/70">
+                No categories available yet. Create the first category to get started.
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {categories.map((category) => {
+                  const isEditing = editingCategoryId === category.id;
+                  const isProcessing = categoryActionLoading && categoryActionTargetId === category.id;
+                  const isDeleting = isProcessing && categoryActionType === "delete";
+                  const isUpdating = isProcessing && categoryActionType === "update";
+                  return (
+                    <Card
+                      key={category.id}
+                      className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex-1">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editingCategoryName}
+                            onChange={(event) => setEditingCategoryName(event.target.value)}
+                            className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
+                            disabled={isProcessing}
+                          />
+                        ) : (
+                          <h3 className="text-sm font-semibold text-brown">{category.model_category}</h3>
+                        )}
+                        {!isEditing && (
+                          <p className="mt-1 text-xs text-brown/60">Category ID: {category.id}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isEditing ? (
+                          <>
+                            <Button
+                              variant="brown"
+                              className="px-3 py-1 text-xs"
+                              onClick={handleUpdateCategory}
+                              disabled={categoryActionLoading}
+                            >
+                              {isUpdating ? "Saving..." : "Save"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="px-3 py-1 text-xs"
+                              onClick={handleCancelEditingCategory}
+                              disabled={categoryActionLoading}
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outline"
+                              className="gap-1 px-3 py-1 text-xs"
+                              onClick={() => handleStartEditingCategory(category)}
+                              disabled={categoryActionLoading}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="gap-1 px-3 py-1 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => handlePromptDeleteCategory(category)}
+                              disabled={categoryActionLoading}
+                            >
+                              {isDeleting ? "Deleting..." : "Delete"}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
+
+        <Modal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            if (categoryActionLoading) {
+              return;
+            }
+            setDeleteModalOpen(false);
+            setCategoryToDelete(null);
+          }}
+          onConfirm={handleDeleteCategory}
+          onConfirmLabel={categoryActionLoading ? "Deleting..." : "Delete"}
+          onCancelLabel="Cancel"
+          title="Delete Category"
+        >
+          <p className="text-sm text-brown/70">
+            Are you sure you want to delete the category "{categoryToDelete?.model_category}"? This action cannot be undone.
+          </p>
+        </Modal>
 
         <Modal
           isOpen={isReportModalOpen}
