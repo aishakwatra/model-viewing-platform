@@ -19,4 +19,5 @@ export interface Project {
   lastUpdated: string;
   status: string;
   models: Model[];
+  clientIds?: number[];
 }

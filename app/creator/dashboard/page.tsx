@@ -11,7 +11,7 @@ import { DashboardFilters } from "@/app/components/dashboard/DashboardFilter";
 import { ProjectAccordion } from "@/app/components/dashboard/ProjectAccordion";
 import { DashboardNav } from '@/app/components/dashboard/DashboardNav';
 import { PortfolioView } from "@/app/components/dashboard/PortfolioView";
-import { CreateProjectModal } from "@/app/components/dashboard/CreateProjectModal";
+import { ProjectModal } from "@/app/components/dashboard/ProjectModal";
 import { Card } from "@/app/components/ui/Card";
 
 export default function CreatorDashboardPage() {
@@ -28,7 +28,10 @@ export default function CreatorDashboardPage() {
   const [activeTab, setActiveTab] = useState("All Projects");
   const [openProjects, setOpenProjects] = useState<string[]>([]);
   const [activeView, setActiveView] = useState<'home' | 'portfolio'>('home');
-  const [isCreateProjectModalOpen, setCreateProjectModalOpen] = useState(false);
+  
+  // Modal State
+  const [isProjectModalOpen, setProjectModalOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null); // Null = Create Mode
 
   // 1. Initial Data Fetching
   useEffect(() => {
@@ -80,23 +83,21 @@ export default function CreatorDashboardPage() {
     return currentProjects;
   }, [searchQuery, projects, selectedDate]);
 
-  // 3. Auto-Open Logic based on Tabs (Category Filter)
-  // --- THE FIX IS HERE ---
+  // 3. Auto-Open Logic based on Tabs
   useEffect(() => {
     if (activeTab === "All Projects") { 
       setOpenProjects([]); 
     } else { 
-      // Automatically open projects that contain a model of the selected category
       const projectsToOpen = projects
         .filter(p => p.models.some(m => m.category === activeTab))
         .map(p => p.id);
       setOpenProjects(projectsToOpen);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]); // <--- REMOVED 'projects' from dependencies. 
-                   // Only run when the user physically changes the tab.
+  }, [activeTab]); 
 
-  // Handlers
+  // --- HANDLERS ---
+
   const toggleProject = (projectId: string) => { 
     setOpenProjects(prev =>
       prev.includes(projectId)
@@ -106,8 +107,7 @@ export default function CreatorDashboardPage() {
   };
 
   const handleStatusChange = async (modelId: string, newStatusId: string) => { 
-     // 1. Optimistic UI Update
-     // We update the local state immediately so the UI feels snappy
+     // Optimistic UI Update
      const statusObj = modelStatuses.find(s => s.id.toString() === newStatusId);
      const statusLabel = statusObj ? statusObj.status : "Unknown";
 
@@ -118,9 +118,7 @@ export default function CreatorDashboardPage() {
       }))
     );
 
-    // 2. Database Update
-    // This happens in the background. Because we removed 'projects' from the useEffect above,
-    // this state change WON'T trigger the "close all" logic anymore.
+    // Database Update
     await updateModelStatus(Number(modelId), Number(newStatusId));
   };
 
@@ -134,6 +132,18 @@ export default function CreatorDashboardPage() {
       }
   };
 
+  // --- MODAL HANDLERS ---
+
+  const handleCreateClick = () => {
+    setProjectToEdit(null); // Clear edit state -> Create Mode
+    setProjectModalOpen(true);
+  };
+
+  const handleEditClick = (project: Project) => {
+    setProjectToEdit(project); // Set project -> Edit Mode
+    setProjectModalOpen(true);
+  };
+
   // 4. Render Loading State
   if (loading) {
     return (
@@ -145,20 +155,23 @@ export default function CreatorDashboardPage() {
 
   return (
     <>
-      <CreateProjectModal 
-        isOpen={isCreateProjectModalOpen}
-        onClose={() => setCreateProjectModalOpen(false)}
-        onProjectCreated={handleRefresh}
+      {/* RENDER THE PROJECT MODAL (Handles Create & Edit) */}
+      <ProjectModal 
+        isOpen={isProjectModalOpen}
+        onClose={() => setProjectModalOpen(false)}
+        onSuccess={handleRefresh} // Refresh list on success
+        projectToEdit={projectToEdit} // Pass project data if editing
       />
 
       <div className="min-h-screen bg-beige">
         <div className="border-b border-brown/10 bg-white shadow-sm">
           <div className="mx-auto max-w-7xl space-y-4 px-6 py-4 md:px-8">
             <h1 className="text-2xl font-semibold text-brown">Creator Dashboard</h1>
+            
             <DashboardNav 
               activeView={activeView} 
               onViewChange={setActiveView}
-              onCreateProjectClick={() => setCreateProjectModalOpen(true)}
+              onCreateProjectClick={handleCreateClick} // Open Modal in Create Mode
               profileHref="/profile?from=creator"
             />
           </div>
@@ -181,18 +194,19 @@ export default function CreatorDashboardPage() {
                     <ProjectAccordion
                       key={project.id}
                       project={project}
-                      modelStatuses={modelStatuses} // Pass statuses down
+                      modelStatuses={modelStatuses}
                       isOpen={openProjects.includes(project.id)}
                       onToggle={() => toggleProject(project.id)}
                       activeFilter={activeTab}
                       onStatusChange={handleStatusChange}
+                      onEditProject={handleEditClick} // Pass the Edit Handler
                     />
                   ))
                 ) : (
                   <Card className="p-8 text-center">
                     <div className="text-brown/70 mb-2">No projects found.</div>
                     <button 
-                        onClick={() => setCreateProjectModalOpen(true)}
+                        onClick={handleCreateClick}
                         className="text-sm text-gold hover:underline"
                     >
                         Create your first project

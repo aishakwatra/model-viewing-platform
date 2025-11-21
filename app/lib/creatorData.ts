@@ -9,6 +9,7 @@ export async function fetchCreatorProjects(creatorId: number) {
         project_name,
         event_start_date,
         project_status ( status ),
+        project_clients ( user_id ),
         models (
           id,
           model_name,
@@ -27,6 +28,9 @@ export async function fetchCreatorProjects(creatorId: number) {
     if (error) throw error;
 
     return (rawProjects || []).map((p: any) => {
+      // Extract Client IDs for editing
+      const clientIds = (p.project_clients || []).map((pc: any) => pc.user_id);
+
       const models = (p.models || []).map((m: any) => {
         const latestVer = m.model_versions?.sort((a: any, b: any) => b.version - a.version)[0];
         const versions = m.model_versions?.map((v: any) => v.version.toString()) || [];
@@ -53,7 +57,8 @@ export async function fetchCreatorProjects(creatorId: number) {
         modelCount: models.length,
         lastUpdated: "Recently",
         status: p.project_status?.status || "Active",
-        models: models
+        models: models,
+        clientIds: clientIds 
       };
     });
   } catch (error) {
@@ -76,6 +81,7 @@ export async function fetchClients() {
   return data || [];
 }
 
+
 export async function fetchModelStatuses() {
     const { data } = await supabase.from("model_status").select("id, status");
     return data || [];
@@ -88,6 +94,7 @@ export async function updateModelStatus(modelId: number, statusId: number) {
         .eq("id", modelId);
     return { success: !error };
 }
+
 
 export async function createNewProject(
   creatorId: number,
@@ -137,6 +144,58 @@ export async function createNewProject(
 
   } catch (error) {
     console.error("Error creating project:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateProject(
+  projectId: number,
+  name: string,
+  startDate: string,
+  clientIds: number[]
+) {
+  try {
+    // 1. Update Project Details
+    const { error: projError } = await supabase
+      .from("projects")
+      .update({
+        project_name: name,
+        event_start_date: startDate || null,
+      })
+      .eq("id", projectId);
+
+    if (projError) throw projError;
+
+    // 2. Update Clients (Sync logic: Delete old -> Insert new)
+    
+    // A. Delete existing links for this project
+    const { error: deleteError } = await supabase
+      .from("project_clients")
+      .delete()
+      .eq("project_id", projectId);
+
+    if (deleteError) throw deleteError;
+
+    // B. Insert new links
+    if (clientIds.length > 0) {
+      const clientLinks = clientIds.map(clientId => ({
+        // Note: project_clients id is auto-generated
+        project_id: projectId,
+        user_id: clientId
+      }));
+
+      const { error: insertError } = await supabase
+        .from("project_clients")
+        .insert(clientLinks);
+
+      if (insertError) throw insertError;
+    }
+
+    return { success: true };
+
+  } catch (error) {
+    console.error("Error updating project:", error);
     // @ts-ignore
     return { success: false, error: error.message };
   }
