@@ -1,89 +1,127 @@
-"use client"; // Ensure this is at the top
+"use client";
 
 import { useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link'; // Import Link
+import Link from 'next/link';
 import { Model } from "@/app/lib/types";
 import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
-
-const statusOptions = [
-  "Under Revision",
-  "Awaiting Review",
-  "Approved",
-  "Released for Download",
-];
+import { EditIcon, TrashIcon, UploadIcon, ExternalLinkIcon } from "@/app/components/ui/Icons";
 
 interface ModelCardProps {
   model: Model;
-  onStatusChange: (modelId: string, newStatus: string) => void;
+  statusOptions?: { id: number; status: string }[]; 
+  onStatusChange: (modelId: string, newStatusId: string) => void;
 }
 
-export function ModelCard({ model, onStatusChange }: ModelCardProps) {
-  // 1. Track the selected version in local state
-  // We default to model.version (which is currently the latest version from your data fetch)
-  const [selectedVersion, setSelectedVersion] = useState(model.version);
+export function ModelCard({ model, statusOptions = [], onStatusChange }: ModelCardProps) {
+  const [selectedVersion, setSelectedVersion] = useState(model.version || "1.0");
+  
+  const currentStatusId = statusOptions?.find(s => s.status === model.status)?.id || "";
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onStatusChange(model.id, e.target.value);
   };
 
   return (
-    <Card className="grid grid-cols-1 items-start gap-x-6 gap-y-4 p-4 md:grid-cols-[240px_1fr_280px]">
+    <Card className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start transition-shadow hover:shadow-md">
       
-      {/* Column 1: Image */}
-      <div className="w-full">
+      {/* 1. Thumbnail Image */}
+      <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg border border-brown/10 bg-brown/5 sm:w-64">
         <Image
-          src={model.thumbnailUrl}
+          src={model.thumbnailUrl || "/sangeet-stage.png"} 
           alt={`Thumbnail of ${model.name}`}
-          width={240}
-          height={180}
-          className="w-full h-auto rounded-lg object-cover border border-brown/15"
+          fill
+          className="object-cover"
         />
       </div>
       
-      {/* Column 2: Model Info */}
-      <div className="flex flex-col h-full">
-        <h3 className="font-medium text-brown">{model.name}</h3>
-        <span className="text-xs bg-pink text-brown/80 rounded-full px-2 py-0.5 self-start mt-1">{model.category}</span>
+      {/* 2. Content Area */}
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-4 self-stretch">
         
-        <div className="mt-2 flex items-center gap-2">
-          <label htmlFor={`version-${model.id}`} className="text-xs text-brown/60">Version:</label>
-          {/* 2. Bind the select to our state */}
-          <select
-            id={`version-${model.id}`}
-            value={selectedVersion} 
-            onChange={(e) => setSelectedVersion(e.target.value)}
-            className="w-full max-w-[100px] rounded-md border border-brown/20 bg-white px-2 py-1 text-xs text-brown outline-none focus:ring-2 focus:ring-gold/60"
-          >
-            {model.versions.map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
-        </div>
-      </div>
+        {/* Header Row */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          
+          {/* Left Info Stack */}
+          <div className="flex flex-col gap-3">
+            
+            {/* Title */}
+            <h3 className="truncate text-base font-semibold text-brown md:text-lg leading-tight">
+              {model.name}
+            </h3>
+            
+            {/* Category */}
+            <p className="text-sm text-brown/60 font-medium">
+              {model.category}
+            </p>
+            
+             {/* Version Selector - Renamed Label */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-brown/70">Select Version:</span>
+              <select
+                  id={`version-${model.id}`}
+                  value={selectedVersion} 
+                  onChange={(e) => setSelectedVersion(e.target.value)}
+                  className="h-9 rounded-lg border border-brown/20 bg-white px-3 text-sm font-medium text-brown outline-none transition hover:border-brown/40 focus:border-gold focus:ring-2 focus:ring-gold/20"
+                >
+                  {(model.versions && model.versions.length > 0 ? model.versions : ["1.0"]).map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+            </div>
+          </div>
 
-      {/* Column 3: Actions */}
-      <div className="flex flex-col justify-between h-full items-stretch">
-        <select
-          value={model.status}
-          onChange={handleStatusChange}
-          className="w-full rounded-lg border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-gold/60"
-        >
-          {statusOptions.map(option => (
-            <option key={option} value={option}>{option}</option>
-          ))}
-        </select>
-        <div className="grid grid-cols-2 gap-2 text-xs w-full mt-2">
+          {/* Status Dropdown */}
+          <div className="w-full lg:w-auto">
+             <div className="relative">
+               <select
+                  value={currentStatusId}
+                  onChange={handleStatusChange}
+                  disabled={statusOptions.length === 0}
+                  className="h-10 w-full cursor-pointer rounded-lg border border-brown/20 bg-white pl-3 pr-8 text-sm font-medium text-brown outline-none transition hover:border-brown/40 focus:border-gold focus:ring-2 focus:ring-gold/20 disabled:opacity-50 lg:w-64"
+                >
+                  {statusOptions.length === 0 && <option value="">Loading...</option>}
+                  {statusOptions.map(option => (
+                    <option key={option.id} value={option.id}>
+                      {option.status}
+                    </option>
+                  ))}
+                </select>
+             </div>
+          </div>
+        </div>
+
+        {/* Footer Section: Action Buttons */}
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-brown/5 mt-1">
+          {/* Primary Action: Renamed Button */}
           <Link 
             href={`/models/${model.id}?version=${selectedVersion}`} 
-            className="contents"
+            className="flex-1 sm:flex-none"
           >
-            <Button variant="outline" className="text-brown/70">Open Model</Button>
+            <Button variant="gold" className="w-full gap-2 px-6 h-10 shadow-sm sm:w-auto text-sm">
+               <ExternalLinkIcon />
+               View Model
+            </Button>
           </Link>
+
+          {/* Divider */}
+          <div className="h-6 w-px bg-brown/10 hidden sm:block" />
+
+          {/* Secondary Actions */}
+          <Button variant="outline" className="gap-2 h-10 px-4 text-sm font-medium border-brown/20 hover:bg-brown/5 hover:border-brown/30 text-brown/80">
+            <UploadIcon /> Upload New Version
+          </Button>
           
-          <Button variant="outline" className="text-brown/70">Upload New Version</Button>
-          <Button variant="outline" className="text-brown/70">Edit Function</Button>
-          <Button variant="outline" className="text-red-600 hover:bg-red-50 hover:text-red-700">Delete Function</Button>
+          <div className="flex items-center gap-1 ml-auto">
+            <button className="p-2 text-brown/40 hover:text-brown hover:bg-brown/5 rounded-lg transition-colors" title="Edit Details">
+                <EditIcon />
+            </button>
+            <button className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Model">
+                <TrashIcon />
+            </button>
+          </div>
         </div>
+
       </div>
     </Card>
   );

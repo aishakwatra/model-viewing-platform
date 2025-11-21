@@ -1,11 +1,7 @@
 import { supabase } from "./supabase";
-import { Project } from "./types";
 
-export async function fetchCreatorProjects(creatorId: number): Promise<Project[]> {
+export async function fetchCreatorProjects(creatorId: number) {
   try {
-    
-    //Getting projects for creator ID
-
     const { data: rawProjects, error } = await supabase
       .from("projects")
       .select(`
@@ -28,38 +24,24 @@ export async function fetchCreatorProjects(creatorId: number): Promise<Project[]
       .eq("creator_id", creatorId)
       .order("id", { ascending: false });
 
-    if (error) {
-      console.error("Supabase error fetching projects:", error);
-      throw error;
-    }
+    if (error) throw error;
 
-    // Transform the raw Database response into your UI 'Project' type
-    const projects: Project[] = (rawProjects || []).map((p: any) => {
-      
-      // Map the models within the project
+    return (rawProjects || []).map((p: any) => {
       const models = (p.models || []).map((m: any) => {
-        // Sort versions to find the latest one (for version number and thumbnail)
-        const sortedVersions = (m.model_versions || []).sort((a: any, b: any) => b.version - a.version);
-        const latestVer = sortedVersions[0];
+        const latestVer = m.model_versions?.sort((a: any, b: any) => b.version - a.version)[0];
+        const versions = m.model_versions?.map((v: any) => v.version.toString()) || [];
         
-        // Create array of version strings ["2.0", "1.0"]
-        const versionList = sortedVersions.map((v: any) => v.version.toString());
-
-        // Fallback image if no versions or no images exist
-        const thumbnail = latestVer?.model_images?.[0]?.image_path || "/sangeet-stage.png";
-
         return {
           id: m.id.toString(),
           name: m.model_name,
           category: m.model_categories?.model_category || "Uncategorized",
           version: latestVer?.version?.toString() || "1.0",
           status: m.model_status?.status || "Draft",
-          thumbnailUrl: thumbnail,
-          versions: versionList.length > 0 ? versionList : ["1.0"]
+          thumbnailUrl: latestVer?.model_images?.[0]?.image_path || "/sangeet-stage.png",
+          versions: versions.length > 0 ? versions : ["1.0"]
         };
       });
 
-      // Format date (Handle nulls safely)
       const startDate = p.event_start_date 
         ? new Date(p.event_start_date).toISOString().split('T')[0] 
         : "";
@@ -69,16 +51,93 @@ export async function fetchCreatorProjects(creatorId: number): Promise<Project[]
         name: p.project_name,
         startDate: startDate,
         modelCount: models.length,
-        lastUpdated: "Recently", 
+        lastUpdated: "Recently",
         status: p.project_status?.status || "Active",
         models: models
       };
     });
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    return [];
+  }
+}
 
-    return projects;
+export async function fetchClients() {
+  const { data, error } = await supabase
+    .from("users")
+    .select("user_id, full_name, email, user_roles!inner(role)")
+    .eq("user_roles.role", "USER") 
+    .eq("is_approved", true);
+
+  if (error) {
+    console.error("Error fetching clients:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function fetchModelStatuses() {
+    const { data } = await supabase.from("model_status").select("id, status");
+    return data || [];
+}
+
+export async function updateModelStatus(modelId: number, statusId: number) {
+    const { error } = await supabase
+        .from("models")
+        .update({ status_id: statusId })
+        .eq("id", modelId);
+    return { success: !error };
+}
+
+export async function createNewProject(
+  creatorId: number,
+  projectName: string,
+  startDate: string,
+  clientIds: number[]
+) {
+  try {
+    // 1. Get Default Status ID (e.g., "In Progress")
+    const { data: statusData } = await supabase
+      .from("project_status")
+      .select("id")
+      .ilike("status", "In Progress")
+      .maybeSingle();
+    
+    const statusId = statusData?.id || 1;
+
+    // 2. Insert Project
+    const { data: project, error: projError } = await supabase
+      .from("projects")
+      .insert({
+        project_name: projectName,
+        event_start_date: startDate || null,
+        creator_id: creatorId,
+        project_status_id: statusId
+      })
+      .select()
+      .single();
+
+    if (projError) throw projError;
+
+    // 3. Insert Project Clients
+    if (clientIds.length > 0 && project) {
+      const clientLinks = clientIds.map(clientId => ({
+        project_id: project.id,
+        user_id: clientId
+      }));
+
+      const { error: linkError } = await supabase
+        .from("project_clients")
+        .insert(clientLinks);
+
+      if (linkError) throw linkError;
+    }
+
+    return { success: true, project };
 
   } catch (error) {
-    console.error("Error in fetchCreatorProjects:", error);
-    return [];
+    console.error("Error creating project:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
   }
 }

@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser } from "@/app/lib/auth"; 
-import { fetchCreatorProjects } from "@/app/lib/creatorData"; // Import the new service
+import { fetchCreatorProjects, fetchModelStatuses, updateModelStatus } from "@/app/lib/creatorData";
 import { Project } from "@/app/lib/types";
 
 // Components
@@ -19,6 +19,7 @@ export default function CreatorDashboardPage() {
   
   // State
   const [projects, setProjects] = useState<Project[]>([]);
+  const [modelStatuses, setModelStatuses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Dashboard Filters & UI State
@@ -36,26 +37,19 @@ export default function CreatorDashboardPage() {
         setLoading(true);
         
         const currentUser = getCurrentUser();
-        
         if (!currentUser) {
           router.push("/auth");
           return;
         }
 
-        // Check role (Optional safety)
-        // Note: user_roles is likely an array from the join, so we check safely
-        const roleRaw = Array.isArray(currentUser.user_roles) 
-          ? currentUser.user_roles[0]?.role 
-          : currentUser.user_roles?.role;
-          
-        if (roleRaw?.toLowerCase() !== 'creator') {
-             // You can uncomment this later to enforce role protection
-             // router.push("/P_ClientDashboard");
-        }
+        // Fetch Projects AND Statuses in parallel
+        const [projectsData, statusesData] = await Promise.all([
+           fetchCreatorProjects(currentUser.user_id),
+           fetchModelStatuses()
+        ]);
 
-        // Fetch Data using the Service Layer
-        const data = await fetchCreatorProjects(currentUser.user_id);
-        setProjects(data);
+        setProjects(projectsData);
+        setModelStatuses(statusesData);
 
       } catch (err) {
         console.error("Dashboard loading error:", err);
@@ -67,7 +61,7 @@ export default function CreatorDashboardPage() {
     initDashboard();
   }, [router]);
 
-  // 2. Filtering Logic (Applied to the fetched data)
+  // 2. Filtering Logic
   const filteredProjects = useMemo(() => {
     let currentProjects = projects;
 
@@ -87,6 +81,7 @@ export default function CreatorDashboardPage() {
   }, [searchQuery, projects, selectedDate]);
 
   // 3. Auto-Open Logic based on Tabs (Category Filter)
+  // --- THE FIX IS HERE ---
   useEffect(() => {
     if (activeTab === "All Projects") { 
       setOpenProjects([]); 
@@ -97,7 +92,9 @@ export default function CreatorDashboardPage() {
         .map(p => p.id);
       setOpenProjects(projectsToOpen);
     }
-  }, [activeTab, projects]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]); // <--- REMOVED 'projects' from dependencies. 
+                   // Only run when the user physically changes the tab.
 
   // Handlers
   const toggleProject = (projectId: string) => { 
@@ -108,13 +105,26 @@ export default function CreatorDashboardPage() {
     );
   };
 
-  const handleStatusChange = (projectId: string, modelId: string, newStatus: string) => { 
-     // Ideally call an update function in creatorData.ts here
-     console.log("Updating status for", modelId, "to", newStatus);
+  const handleStatusChange = async (modelId: string, newStatusId: string) => { 
+     // 1. Optimistic UI Update
+     // We update the local state immediately so the UI feels snappy
+     const statusObj = modelStatuses.find(s => s.id.toString() === newStatusId);
+     const statusLabel = statusObj ? statusObj.status : "Unknown";
+
+     setProjects(currentProjects =>
+      currentProjects.map(p => ({
+        ...p, 
+        models: p.models.map(m => m.id === modelId ? { ...m, status: statusLabel } : m) 
+      }))
+    );
+
+    // 2. Database Update
+    // This happens in the background. Because we removed 'projects' from the useEffect above,
+    // this state change WON'T trigger the "close all" logic anymore.
+    await updateModelStatus(Number(modelId), Number(newStatusId));
   };
 
   const handleRefresh = async () => {
-      // Helper to refresh list after create/update
       const user = getCurrentUser();
       if (user) {
           setLoading(true);
@@ -138,7 +148,7 @@ export default function CreatorDashboardPage() {
       <CreateProjectModal 
         isOpen={isCreateProjectModalOpen}
         onClose={() => setCreateProjectModalOpen(false)}
-        onProjectCreated={handleRefresh} 
+        onProjectCreated={handleRefresh}
       />
 
       <div className="min-h-screen bg-beige">
@@ -171,12 +181,11 @@ export default function CreatorDashboardPage() {
                     <ProjectAccordion
                       key={project.id}
                       project={project}
+                      modelStatuses={modelStatuses} // Pass statuses down
                       isOpen={openProjects.includes(project.id)}
                       onToggle={() => toggleProject(project.id)}
                       activeFilter={activeTab}
-                      onStatusChange={(modelId, newStatus) =>
-                        handleStatusChange(project.id, modelId, newStatus)
-                      }
+                      onStatusChange={handleStatusChange}
                     />
                   ))
                 ) : (

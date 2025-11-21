@@ -13,9 +13,9 @@ export type UserRole = "user" | "creator";
 // Role IDs based on your schema (adjust these based on your actual user_roles table)
 // Ensure these stay in sync with the values stored in public.user_roles
 const ROLE_IDS = {
-  user: 3,
-  creator: 2,
-  admin: 1,
+  user: 2,
+  creator: 1,
+  admin: 3,
 };
 
 /**

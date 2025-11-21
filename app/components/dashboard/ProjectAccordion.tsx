@@ -19,13 +19,14 @@ function formatDate(dateString: string) {
 
 interface ProjectAccordionProps {
   project: Project;
+  modelStatuses: any[];
   isOpen: boolean;
   onToggle: () => void;
   activeFilter: string;
-  onStatusChange: (modelId: string, newStatus: string) => void;
+  onStatusChange: (modelId: string, newStatusId: string) => void; 
 }
 
-export function ProjectAccordion({ project, isOpen, onToggle, activeFilter, onStatusChange }: ProjectAccordionProps) {
+export function ProjectAccordion({ project, modelStatuses, isOpen, onToggle, activeFilter, onStatusChange }: ProjectAccordionProps) {
   // THE FIX: Standardizing the state variable and setter names
   const [isAddModelOpen, setAddModelOpen] = useState(false);
 
@@ -80,7 +81,6 @@ export function ProjectAccordion({ project, isOpen, onToggle, activeFilter, onSt
                <Button 
                  variant="outline" 
                  className="w-full sm:w-auto text-xs"
-                 // THE FIX: This now correctly calls the state setter function
                  onClick={() => setAddModelOpen(true)}
                >
                 + Add New Model
@@ -89,6 +89,7 @@ export function ProjectAccordion({ project, isOpen, onToggle, activeFilter, onSt
                 <ModelCard 
                   key={model.id} 
                   model={model} 
+                  statusOptions={modelStatuses}
                   onStatusChange={onStatusChange} 
                 />
               ))}
