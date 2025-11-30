@@ -12,11 +12,11 @@ export type UserRole = "user" | "creator";
 
 // Role IDs based on your schema (adjust these based on your actual user_roles table)
 // Ensure these stay in sync with the values stored in public.user_roles
-const ROLE_IDS = {
-  user: 3,
-  creator: 2,
-  admin: 1,
-};
+export const ROLE_IDS = {
+  creator: 1, // Creator role
+  user: 2,    // Regular user role
+  admin: 3,   // Admin role
+} as const;
 
 /**
  * Sign up a new user
@@ -97,22 +97,62 @@ export async function signUp(userData: SignUpData, role: UserRole = "user") {
 
 /**
  * Sign in an existing user
- * Uses Supabase Auth for authentication
+ * Supports both Supabase Auth and legacy custom password hash
  */
 export async function signIn(email: string, password: string) {
   try {
-    // Step 1: Authenticate with Supabase Auth
+    // Step 1: Try Supabase Auth first
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (authError) throw new Error("Invalid email or password");
-    if (!authData.user) throw new Error("Authentication failed");
+    // If Supabase Auth succeeds, proceed with normal flow
+    if (!authError && authData.user) {
+      const authUserId = authData.user.id;
 
-    const authUserId = authData.user.id;
+      // Fetch user profile from custom users table using auth_user_id
+      const { data: user, error: fetchError } = await supabase
+        .from("users")
+        .select(
+          `
+          user_id,
+          auth_user_id,
+          email,
+          full_name,
+          photo_url,
+          user_role_id,
+          created_at,
+          is_approved,
+          user_roles (
+            role
+          )
+        `
+        )
+        .eq("auth_user_id", authUserId)
+        .single();
 
-    // Step 2: Fetch user profile from custom users table using auth_user_id
+      if (fetchError || !user) {
+        throw new Error("User profile not found");
+      }
+
+      // Check if user is approved
+      if (!user.is_approved) {
+        throw new Error("Your account is pending approval. Please wait for an administrator to approve your account.");
+      }
+
+      // Return user data with auth session
+      return {
+        success: true,
+        user: user,
+        session: authData.session,
+        message: "Signed in successfully!",
+      };
+    }
+
+    // Step 2: Fallback to custom password verification (for legacy/admin users)
+    console.log("Supabase Auth failed, trying custom password verification...");
+    
     const { data: user, error: fetchError } = await supabase
       .from("users")
       .select(
@@ -120,6 +160,7 @@ export async function signIn(email: string, password: string) {
         user_id,
         auth_user_id,
         email,
+        password_hash,
         full_name,
         photo_url,
         user_role_id,
@@ -130,11 +171,17 @@ export async function signIn(email: string, password: string) {
         )
       `
       )
-      .eq("auth_user_id", authUserId)
+      .eq("email", email)
       .single();
 
     if (fetchError || !user) {
-      throw new Error("User profile not found");
+      throw new Error("Invalid email or password");
+    }
+
+    // Verify password using bcrypt
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    if (!passwordMatch) {
+      throw new Error("Invalid email or password");
     }
 
     // Check if user is approved
@@ -142,11 +189,14 @@ export async function signIn(email: string, password: string) {
       throw new Error("Your account is pending approval. Please wait for an administrator to approve your account.");
     }
 
-    // Return user data with auth session
+    // Remove password_hash from returned user object
+    const { password_hash, ...userWithoutPassword } = user;
+
+    // Return user data (without session since not using Supabase Auth)
     return {
       success: true,
-      user: user,
-      session: authData.session,
+      user: userWithoutPassword,
+      session: null,
       message: "Signed in successfully!",
     };
   } catch (error) {

@@ -4,6 +4,7 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/app/components/ui/Button";
 import { signIn, saveCurrentUser } from "@/app/lib/auth";
+import { useAuth } from "@/app/components/auth/AuthProvider";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -11,6 +12,7 @@ interface LoginFormProps {
 
 export function LoginForm({ onSuccess }: LoginFormProps) {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -28,6 +30,9 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       if (result.success) {
         // Save user to local storage
         saveCurrentUser(result.user);
+        
+        // Refresh the auth context to update the user state
+        refreshUser();
 
         // Show success message (optional)
         if (onSuccess) {
@@ -35,10 +40,18 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         }
 
         // Redirect based on user role
-        const userRole = result.user.user_roles?.role;
-        if (userRole === "creator") {
+        const userRoleId = result.user.user_role_id;
+        
+        // Admin role (user_role_id = 3)
+        if (userRoleId === 3) {
+          router.push("/P_AdminDashboard");
+        }
+        // Creator role (user_role_id = 1)
+        else if (userRoleId === 1) {
           router.push("/dashboard");
-        } else {
+        }
+        // Regular user role (user_role_id = 2)
+        else {
           router.push("/P_ClientDashboard");
         }
       }

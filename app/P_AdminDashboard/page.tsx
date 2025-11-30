@@ -2,6 +2,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/components/auth/AuthProvider";
+import { ROLE_IDS } from "@/app/lib/auth";
 import { Button } from "@/app/components/ui/Button";
 import { Card } from "@/app/components/ui/Card";
 import { Modal } from "@/app/components/ui/Confirm";
@@ -29,6 +32,8 @@ const ReportsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" hei
 const CategoriesIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
 
 export default function AdminDashboard() {
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("requests");
   const [isReportModalOpen, setReportModalOpen] = useState(false);
   const [selectedReportOptions, setSelectedReportOptions] = useState<{
@@ -69,6 +74,35 @@ export default function AdminDashboard() {
   const [categoryActionType, setCategoryActionType] = useState<ManageCategoryAction | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<ModelCategory | null>(null);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+
+  // Admin role protection - Only user_role_id = 3 can access
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        // User not authenticated, logout and redirect to auth page
+        logout();
+        router.push('/auth');
+      } else if (user.user_role_id !== ROLE_IDS.admin) {
+        // User is not admin (user_role_id must be 3), logout and redirect to auth page
+        logout();
+        router.push('/auth');
+      }
+    }
+  }, [user, loading, logout, router]);
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-beige">
+        <div className="text-brown">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated or not admin
+  if (!user || user.user_role_id !== ROLE_IDS.admin) {
+    return null;
+  }
 
   const manageCategories = useCallback(
     async (
