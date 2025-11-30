@@ -13,6 +13,7 @@ import {
   rejectUser,
 } from "@/app/lib/admin";
 import { ModelCategory, supabase } from "@/app/lib/supabase";
+import { generateAdminReport, downloadExcelFile } from "@/app/lib/reportGenerator";
 
 type ManageCategoryAction = "create" | "read" | "update" | "delete";
 
@@ -30,6 +31,24 @@ const CategoriesIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("requests");
   const [isReportModalOpen, setReportModalOpen] = useState(false);
+  const [selectedReportOptions, setSelectedReportOptions] = useState<{
+    creatorProjectsSummary: boolean;
+    topFavoritedProjects: boolean;
+    activeClientsCount: boolean;
+  }>({
+    creatorProjectsSummary: false,
+    topFavoritedProjects: false,
+    activeClientsCount: false,
+  });
+  const [reportDateRange, setReportDateRange] = useState<{
+    start: string;
+    end: string;
+  }>({
+    start: "",
+    end: "",
+  });
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   const requests = [
     { id: 1, name: "Priya Sharma", email: "priya.sharma@email.com", role: "Creator", requestedDate: "March 20, 2024" },
@@ -261,21 +280,72 @@ export default function AdminDashboard() {
 
   const reportOptions = [
     {
-      key: "creatorProjectsSummary",
+      key: "creatorProjectsSummary" as const,
       label: "Number of projects & models per creator",
       description: "Summarize creators along with their project and model counts",
     },
     {
-      key: "topFavoritedProjects",
+      key: "topFavoritedProjects" as const,
       label: "Projects with the most favourites",
       description: "Highlight popular projects, their owners, and total favourites",
     },
     {
-      key: "activeClientsCount",
+      key: "activeClientsCount" as const,
       label: "Number of active clients",
       description: "Provide a current total of active client accounts",
     },
   ];
+
+  const handleReportOptionChange = (key: keyof typeof selectedReportOptions) => {
+    setSelectedReportOptions((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const handleGenerateReport = async () => {
+    // Validate that at least one option is selected
+    const hasSelection = Object.values(selectedReportOptions).some((val) => val);
+    if (!hasSelection) {
+      setReportError("Please select at least one report type.");
+      return;
+    }
+
+    setIsGeneratingReport(true);
+    setReportError(null);
+
+    try {
+      const blob = await generateAdminReport({
+        ...selectedReportOptions,
+        dateRange: {
+          start: reportDateRange.start || null,
+          end: reportDateRange.end || null,
+        },
+      });
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const filename = `admin_report_${timestamp}.xlsx`;
+
+      downloadExcelFile(blob, filename);
+      
+      // Close modal and reset after successful generation
+      setReportModalOpen(false);
+      setSelectedReportOptions({
+        creatorProjectsSummary: false,
+        topFavoritedProjects: false,
+        activeClientsCount: false,
+      });
+      setReportDateRange({ start: "", end: "" });
+    } catch (error) {
+      console.error("Error generating report:", error);
+      setReportError(
+        error instanceof Error ? error.message : "Failed to generate report. Please try again."
+      );
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   const RoleBadge = ({ role }: { role: string }) => {
     const base = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
@@ -350,8 +420,24 @@ export default function AdminDashboard() {
           <Card className="p-4 space-y-4">
             <h2 className="text-lg font-semibold text-brown">Generate Reports</h2>
             <div className="grid gap-4 md:grid-cols-2">
-              <div><label className="mb-1 block text-sm font-medium text-brown">Start Date</label><input type="date" className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" /></div>
-              <div><label className="mb-1 block text-sm font-medium text-brown">End Date</label><input type="date" className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" /></div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-brown">Start Date</label>
+                <input 
+                  type="date" 
+                  value={reportDateRange.start}
+                  onChange={(e) => setReportDateRange(prev => ({ ...prev, start: e.target.value }))}
+                  className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" 
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-brown">End Date</label>
+                <input 
+                  type="date" 
+                  value={reportDateRange.end}
+                  onChange={(e) => setReportDateRange(prev => ({ ...prev, end: e.target.value }))}
+                  className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30" 
+                />
+              </div>
             </div>
             <Button variant="gold" className="gap-2" onClick={() => setReportModalOpen(true)}>
               <ReportsIcon /> Generate Excel Report
@@ -488,7 +574,12 @@ export default function AdminDashboard() {
 
         <Modal
           isOpen={isReportModalOpen}
-          onClose={() => setReportModalOpen(false)}
+          onClose={() => {
+            if (!isGeneratingReport) {
+              setReportModalOpen(false);
+              setReportError(null);
+            }
+          }}
           title="Generate Excel Report"
           onCancelLabel="Close"
         >
@@ -496,6 +587,11 @@ export default function AdminDashboard() {
             <p className="text-sm text-brown/70">
               Select the information you want included in the exported Excel report.
             </p>
+            {reportError && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+                {reportError}
+              </div>
+            )}
             <div className="space-y-3">
               {reportOptions.map((option) => (
                 <label
@@ -503,7 +599,14 @@ export default function AdminDashboard() {
                   htmlFor={option.key}
                   className="flex cursor-pointer items-start gap-3 rounded-xl border border-brown/10 bg-brown/5 px-3 py-3 text-sm text-brown hover:bg-brown/10"
                 >
-                  <input id={option.key} type="checkbox" className="mt-1 size-4 accent-brown" />
+                  <input 
+                    id={option.key} 
+                    type="checkbox" 
+                    className="mt-1 size-4 accent-brown"
+                    checked={selectedReportOptions[option.key]}
+                    onChange={() => handleReportOptionChange(option.key)}
+                    disabled={isGeneratingReport}
+                  />
                   <div>
                     <p className="font-medium">{option.label}</p>
                     <p className="text-xs text-brown/60">{option.description}</p>
@@ -511,8 +614,13 @@ export default function AdminDashboard() {
                 </label>
               ))}
             </div>
-            <Button variant="gold" className="w-full justify-center" onClick={() => setReportModalOpen(false)}>
-              Download Excel (Mock)
+            <Button 
+              variant="gold" 
+              className="w-full justify-center" 
+              onClick={handleGenerateReport}
+              disabled={isGeneratingReport}
+            >
+              {isGeneratingReport ? "Generating..." : "Download Excel Report"}
             </Button>
           </div>
         </Modal>
