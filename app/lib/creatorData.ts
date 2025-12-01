@@ -18,7 +18,7 @@ export async function fetchCreatorProjects(creatorId: number) {
           model_categories ( model_category ),
           model_versions (
             version,
-            model_images ( image_path )
+            thumbnail_url
           )
         )
       `)
@@ -32,17 +32,26 @@ export async function fetchCreatorProjects(creatorId: number) {
       const clientIds = (p.project_clients || []).map((pc: any) => pc.user_id);
 
       const models = (p.models || []).map((m: any) => {
-        const latestVer = m.model_versions?.sort((a: any, b: any) => b.version - a.version)[0];
-        const versions = m.model_versions?.map((v: any) => v.version.toString()) || [];
+        // Sort versions descending (newest first)
+        const sortedVersions = m.model_versions?.sort((a: any, b: any) => b.version - a.version) || [];
+        const latestVer = sortedVersions[0];
+        const versionsList = sortedVersions.map((v: any) => v.version.toString()) || [];
         
+        // Map: Version -> Thumbnail URL
+        const versionThumbnails: Record<string, string> = {};
+        sortedVersions.forEach((v: any) => {
+             versionThumbnails[v.version.toString()] = v.thumbnail_url;
+        });
+
         return {
           id: m.id.toString(),
           name: m.model_name,
           category: m.model_categories?.model_category || "Uncategorized",
           version: latestVer?.version?.toString() || "1.0",
           status: m.model_status?.status || "Draft",
-          thumbnailUrl: latestVer?.model_images?.[0]?.image_path || "/sangeet-stage.png",
-          versions: versions.length > 0 ? versions : ["1.0"]
+          thumbnailUrl: latestVer?.thumbnail_url || "", // Latest version's thumb
+          versions: versionsList.length > 0 ? versionsList : ["1.0"],
+          versionThumbnails: versionThumbnails // Pass the map to the UI
         };
       });
 
@@ -50,7 +59,7 @@ export async function fetchCreatorProjects(creatorId: number) {
         ? new Date(p.event_start_date).toISOString().split('T')[0] 
         : "";
 
-      return {
+     return {
         id: p.id.toString(),
         name: p.project_name,
         startDate: startDate,
@@ -85,6 +94,24 @@ export async function fetchClients() {
 export async function fetchModelStatuses() {
     const { data } = await supabase.from("model_status").select("id, status");
     return data || [];
+}
+
+export async function fetchCategories() {
+  try {
+    const { data, error } = await supabase
+      .from("model_categories")
+      .select("id, model_category")
+      .order("model_category");
+      
+    if (error) {
+      console.error("Error fetching categories:", error);
+      return [];
+    }
+    return data || [];
+  } catch (error) {
+    console.error("Unexpected error fetching categories:", error);
+    return [];
+  }
 }
 
 export async function updateModelStatus(modelId: number, statusId: number) {
@@ -200,3 +227,139 @@ export async function updateProject(
     return { success: false, error: error.message };
   }
 }
+
+
+export async function uploadModelImages(
+  modelId: number,       // Added: needed for folder structure
+  modelVersionId: number, 
+  versionNumber: number, // Added: needed for file name
+  files: File[]
+) {
+  try {
+    const uploadPromises = files.map(async (file, index) => {
+      const fileExt = file.name.split(".").pop();
+      
+      // NEW NAMING LOGIC: {ModelID}-{VersionNumber}-{Order}.{ext}
+      // e.g., "101-2-1.png" (Model 101, Version 2, Image 1)
+      const order = index + 1;
+      const fileName = `${modelId}-${versionNumber}-${order}.${fileExt}`;
+      
+      // NEW PATH STRUCTURE: model-{ID}/version-{V}/filename
+      // e.g., "model-101/version-2/101-2-1.png"
+      const filePath = `model-${modelId}/version-${versionNumber}/${fileName}`;
+
+      // 1. Upload
+      const { error: uploadError } = await supabase.storage
+        .from("Model Images") 
+        .upload(filePath, file, {
+            upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("Model Images")
+        .getPublicUrl(filePath);
+
+      // 3. Insert into DB
+      const { error: dbError } = await supabase
+        .from("model_images")
+        .insert({
+          model_version_id: modelVersionId,
+          image_path: publicUrl 
+        });
+
+      if (dbError) throw dbError;
+
+      return publicUrl;
+    });
+
+    const results = await Promise.all(uploadPromises);
+    return { success: true, imageUrls: results };
+
+  } catch (error) {
+    console.error("Error uploading images:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
+  }
+}
+
+
+export async function addModelToProject(
+  projectId: number,
+  name: string,
+  categoryId: number,
+  objFilePath: string,
+  imageFiles: File[] = [],
+  thumbnailIndex: number = 0
+) {
+  try {
+    const { data: statusData } = await supabase
+      .from("model_status")
+      .select("id")
+      .ilike("status", "Draft") 
+      .maybeSingle();
+      
+    const statusId = statusData?.id || 1;
+
+    const { data: model, error: modelError } = await supabase
+      .from("models")
+      .insert({
+        model_name: name,
+        project_id: projectId,
+        model_category_id: categoryId,
+        status_id: statusId
+      })
+      .select()
+      .single();
+
+    if (modelError) throw modelError;
+
+    const { data: version, error: versionError } = await supabase
+      .from("model_versions")
+      .insert({
+        model_id: model.id,
+        version: 1, 
+        obj_file_path: objFilePath,
+        can_download: false
+      })
+      .select()
+      .single();
+
+    if (versionError) throw versionError;
+
+    // Upload Images
+    if (imageFiles.length > 0 && version) {
+
+        // This helper (from previous code) returns { success, imageUrls: string[] }
+        const result = await uploadModelImages(model.id, version.id, 1, imageFiles);
+
+        if (result.success && result.imageUrls && result.imageUrls.length > 0) {
+            
+            // 4. Force Selection: Pick URL based on user choice or default to 0
+            const safeIndex = (thumbnailIndex >= 0 && thumbnailIndex < result.imageUrls.length) 
+                ? thumbnailIndex 
+                : 0;
+                
+            const selectedThumbnailUrl = result.imageUrls[safeIndex];
+
+            // 5. Update the Version with the chosen thumbnail
+            const { error: updateError } = await supabase
+                .from("model_versions")
+                .update({ thumbnail_url: selectedThumbnailUrl })
+                .eq("id", version.id);
+                
+            if (updateError) throw updateError;
+            
+        }
+    }
+
+    return { success: true, model };
+  } catch (error) {
+    console.error("Error adding model:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
+  }
+}
+

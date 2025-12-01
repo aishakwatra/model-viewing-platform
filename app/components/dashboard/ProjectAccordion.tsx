@@ -57,6 +57,7 @@ export function ProjectAccordion({
         isOpen={isAddModelOpen}
         onClose={() => setAddModelOpen(false)}
         projectName={project.name}
+        projectId={project.id}
       />
 
       <Card className="overflow-hidden p-0 transition-shadow hover:shadow-md">
