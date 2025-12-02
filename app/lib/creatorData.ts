@@ -290,7 +290,7 @@ export async function addModelToProject(
   projectId: number,
   name: string,
   categoryId: number,
-  objFilePath: string,
+  modelFiles: File[], // CHANGED: Now accepts File[] instead of string path
   imageFiles: File[] = [],
   thumbnailIndex: number = 0
 ) {
@@ -300,9 +300,9 @@ export async function addModelToProject(
       .select("id")
       .ilike("status", "Draft") 
       .maybeSingle();
-      
     const statusId = statusData?.id || 1;
 
+    // 1. Insert Model
     const { data: model, error: modelError } = await supabase
       .from("models")
       .insert({
@@ -316,12 +316,22 @@ export async function addModelToProject(
 
     if (modelError) throw modelError;
 
+    // 2. Upload Model Files (Folder) - We do this BEFORE creating version row
+    //    so we have the real GLTF URL.
+    //    We assume version 1 for a new model.
+    const folderResult = await uploadModelFolder(model.id, 1, modelFiles);
+    
+    if (!folderResult.success || !folderResult.gltfUrl) {
+       throw new Error(folderResult.error || "Failed to process model folder");
+    }
+
+    // 3. Insert Version 1 with the real GLTF URL
     const { data: version, error: versionError } = await supabase
       .from("model_versions")
       .insert({
         model_id: model.id,
         version: 1, 
-        obj_file_path: objFilePath,
+        obj_file_path: folderResult.gltfUrl, // Use the real URL
         can_download: false
       })
       .select()
@@ -329,29 +339,15 @@ export async function addModelToProject(
 
     if (versionError) throw versionError;
 
-    // Upload Images
+    // 4. Upload Images & Handle Thumbnail
     if (imageFiles.length > 0 && version) {
-
-        // This helper (from previous code) returns { success, imageUrls: string[] }
         const result = await uploadModelImages(model.id, version.id, 1, imageFiles);
-
         if (result.success && result.imageUrls && result.imageUrls.length > 0) {
-            
-            // 4. Force Selection: Pick URL based on user choice or default to 0
-            const safeIndex = (thumbnailIndex >= 0 && thumbnailIndex < result.imageUrls.length) 
-                ? thumbnailIndex 
-                : 0;
-                
-            const selectedThumbnailUrl = result.imageUrls[safeIndex];
-
-            // 5. Update the Version with the chosen thumbnail
-            const { error: updateError } = await supabase
+            const safeIndex = (thumbnailIndex >= 0 && thumbnailIndex < result.imageUrls.length) ? thumbnailIndex : 0;
+            await supabase
                 .from("model_versions")
-                .update({ thumbnail_url: selectedThumbnailUrl })
+                .update({ thumbnail_url: result.imageUrls[safeIndex] })
                 .eq("id", version.id);
-                
-            if (updateError) throw updateError;
-            
         }
     }
 
@@ -363,3 +359,119 @@ export async function addModelToProject(
   }
 }
 
+
+export async function addNewVersionToModel(
+  modelId: number,
+  modelFiles: File[], // CHANGED: Now accepts File[] instead of string
+  imageFiles: File[] = [],
+  thumbnailIndex: number = 0
+) {
+  try {
+    // 1. Determine next version number
+    const { data: versions, error: fetchError } = await supabase
+      .from("model_versions")
+      .select("version")
+      .eq("model_id", modelId)
+      .order("version", { ascending: false })
+      .limit(1);
+
+    if (fetchError) throw fetchError;
+    const currentMax = versions && versions.length > 0 ? versions[0].version : 0;
+    const nextVersion = currentMax + 1;
+
+    // 2. Upload Model Files first to get the URL
+    const folderResult = await uploadModelFolder(modelId, nextVersion, modelFiles);
+
+    if (!folderResult.success || !folderResult.gltfUrl) {
+        throw new Error(folderResult.error || "Failed to process model folder");
+    }
+
+    // 3. Insert new version
+    const { data: version, error: insertError } = await supabase
+      .from("model_versions")
+      .insert({
+        model_id: modelId,
+        version: nextVersion,
+        obj_file_path: folderResult.gltfUrl, // Real URL
+        can_download: false
+      })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    // 4. Upload Images & Handle Thumbnail
+    if (imageFiles.length > 0 && version) {
+        const result = await uploadModelImages(modelId, version.id, nextVersion, imageFiles);
+        if (result.success && result.imageUrls && result.imageUrls.length > 0) {
+            const safeIndex = (thumbnailIndex >= 0 && thumbnailIndex < result.imageUrls.length) ? thumbnailIndex : 0;
+            await supabase
+                .from("model_versions")
+                .update({ thumbnail_url: result.imageUrls[safeIndex] })
+                .eq("id", version.id);
+        }
+    }
+
+    return { success: true, version: nextVersion };
+  } catch (error) {
+    console.error("Error adding new version:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
+  }
+}
+
+
+export async function uploadModelFolder(
+  modelId: number,
+  versionNumber: number,
+  files: File[]
+) {
+  try {
+    let gltfPath = "";
+    
+    // 1. Upload every file in the list
+    const uploadPromises = files.map(async (file) => {
+      // Use webkitRelativePath if available to preserve folder structure (textures/ etc.)
+      // Fallback to name if it's flat
+      // @ts-ignore - webkitRelativePath exists on File objects from folder inputs
+      const relativePath = file.webkitRelativePath || file.name;
+      
+      // Remove the top-level folder name from the path if present (optional, but cleaner)
+      // e.g. "MyModel/textures/img.png" -> "textures/img.png"
+      // const cleanPath = relativePath.split('/').slice(1).join('/'); 
+      // For safety, we'll keep the full structure to avoid collisions or just use unique prefix
+      
+      const storagePath = `model-${modelId}/version-${versionNumber}/${relativePath}`;
+
+      const { error } = await supabase.storage
+        .from("Models") // User specified bucket 'Models'
+        .upload(storagePath, file, {
+          upsert: true,
+        });
+
+      if (error) throw error;
+
+      // 2. Identify the .gltf file
+      if (file.name.endsWith(".gltf")) {
+        const { data } = supabase.storage
+          .from("Models")
+          .getPublicUrl(storagePath);
+        
+        gltfPath = data.publicUrl;
+      }
+    });
+
+    await Promise.all(uploadPromises);
+
+    if (!gltfPath) {
+      throw new Error("No .gltf file found in the uploaded folder.");
+    }
+
+    return { success: true, gltfUrl: gltfPath };
+
+  } catch (error) {
+    console.error("Error uploading model folder:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
+  }
+}
