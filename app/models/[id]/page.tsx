@@ -2,36 +2,25 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/app/lib/supabase";
+import { supabase } from "@/app/lib/supabase"; 
 import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { ModelViewer } from "@/app/components/ModelViewer";
 import { FavouriteIcon } from "@/app/components/ui/Icons";
-import { Avatar } from "@/app/components/Avatar";
 
-// --- TYPES ---
-interface ModelDetail {
-  id: number;
-  model_name: string;
-  project_id: number;
-  created_at: string;
-  projects: { project_name: string };
-  model_categories: { model_category: string };
-  model_status: { status: string };
-}
 
-// Updated Interface to include images/page.tsx]
-interface ModelVersion {
-  id: number;
-  version: number;
-  obj_file_path: string; 
-  created_at: string;
-  model_images: {
-    id: number;
-    image_path: string;
-  }[];
-}
+import { CommentList } from "@/app/components/model/CommentList";
+import { CommentForm } from "@/app/components/model/CommentForm";
+
+import { 
+  fetchModelDetails, 
+  fetchModelVersions, 
+  fetchComments, 
+  ModelDetail, 
+  ModelVersion,
+  Comment       
+} from "@/app/lib/modelData";
 
 export default function ModelViewerPage() {
   // Hooks
@@ -43,21 +32,23 @@ export default function ModelViewerPage() {
   const modelId = params?.id;
   const versionParam = searchParams.get('version'); 
 
-  // State
   const [model, setModel] = useState<ModelDetail | null>(null);
   const [versions, setVersions] = useState<ModelVersion[]>([]);
   const [activeVersion, setActiveVersion] = useState<ModelVersion | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]); // <--- New Comments State
+  const [loadingComments, setLoadingComments] = useState(false);
+
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // New State for Image Modal
+  // UI State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [downloadingImage, setDownloadingImage] = useState(false);
 
   // 1. Load Data on Mount
   useEffect(() => {
     if (modelId) {
-      loadModelData(Number(modelId));
+      loadData(Number(modelId));
     }
   }, [modelId]);
 
@@ -68,62 +59,49 @@ export default function ModelViewerPage() {
     }
   }, [versionParam, versions]);
 
-  // --- DATA FETCHING ---
-  async function loadModelData(id: number) {
+  useEffect(() => {
+    if (activeVersion) {
+        loadVersionComments(activeVersion.id);
+    }
+  }, [activeVersion]);
+
+  // --- DATA FETCHING (Refactored) ---
+  async function loadData(id: number) {
     try {
       setLoading(true);
+      const [modelData, versionsData] = await Promise.all([
+        fetchModelDetails(id),
+        fetchModelVersions(id)
+      ]);
 
-      // A. Fetch Metadata
-      const { data: modelData, error: modelError } = await supabase
-        .from("models")
-        .select(`
-          id,
-          model_name,
-          project_id,
-          created_at,
-          projects ( project_name ),
-          model_categories ( model_category ),
-          model_status ( status )
-        `)
-        .eq("id", id)
-        .single();
-
-      if (modelError) throw modelError;
-      setModel(modelData as any);
-
-      // B. Fetch All Versions AND Images
-      const { data: versionData, error: versionError } = await supabase
-        .from("model_versions")
-        .select(`
-          *,
-          model_images (
-            id,
-            image_path
-          )
-        `)
-        .eq("model_id", id)
-        .order("version", { ascending: false }); 
-
-      if (versionError) throw versionError;
-
-      if (versionData && versionData.length > 0) {
-        setVersions(versionData as any);
-      }
+      if (modelData) setModel(modelData);
+      if (versionsData) setVersions(versionsData);
+      
     } catch (err) {
-      console.error("Error loading model:", err);
+      console.error("Error loading model data:", err);
     } finally {
       setLoading(false);
     }
   }
 
-  // --- LOGIC ---
+  async function loadVersionComments(versionId: number) {
+      setLoadingComments(true);
+      const data = await fetchComments(versionId);
+      setComments(data);
+      setLoadingComments(false);
+  }
 
+  // --- VERSION LOGIC ---
   function selectVersionBasedOnUrl() {
+      // Default to latest (first in list because of desc order)
       let targetVersion = versions[0];
+
+      // If URL has specific version, try to find it
       if (versionParam) {
           const found = versions.find(v => v.version.toString() === versionParam);
           if (found) targetVersion = found;
       }
+
       setActiveVersion(targetVersion);
       updateModelUrl(targetVersion.obj_file_path);
   }
@@ -132,7 +110,8 @@ export default function ModelViewerPage() {
     if (path.startsWith("http")) {
       setModelUrl(path);
     } else {
-      const { data } = supabase.storage.from("models").getPublicUrl(path);
+      // Assuming 'Models' bucket for 3D files based on your setup
+      const { data } = supabase.storage.from("Models").getPublicUrl(path);
       setModelUrl(data.publicUrl);
     }
   }
@@ -142,7 +121,8 @@ export default function ModelViewerPage() {
     router.push(`/models/${modelId}?version=${selectedVer}`);
   };
 
-  // --- DOWNLOAD HANDLER ---
+  // --- IMAGE & CAROUSEL LOGIC ---
+  
   const handleDownloadImage = async (imageUrl: string) => {
     try {
       setDownloadingImage(true);
@@ -165,7 +145,6 @@ export default function ModelViewerPage() {
     }
   };
 
-  // --- CAROUSEL LOGIC ---
   const handleNavigateImage = useCallback((direction: 'next' | 'prev') => {
     if (!activeVersion?.model_images || !selectedImage) return;
     
@@ -285,6 +264,7 @@ export default function ModelViewerPage() {
         </div>
       )}
 
+      {/* MAIN PAGE CONTENT */}
       <div className="bg-beige min-h-screen pb-12">
         {/* Top Bar */}
         <div className="border-b border-brown/10 bg-white shadow-sm sticky top-0 z-10">
@@ -326,38 +306,53 @@ export default function ModelViewerPage() {
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* Main Content Area */}
         <div className="mx-auto mt-6 w-full max-w-7xl space-y-6 px-6 md:px-8">
-          {/* 3D Viewer */}
+          
+          {/* 3D Viewer Component */}
           {modelUrl ? (
             <ModelViewer modelPath={modelUrl} />
           ) : (
             <div className="aspect-video w-full flex items-center justify-center bg-brown/5 text-brown/40 rounded-2xl border-2 border-dashed border-brown/10">
-              No 3D file uploaded for this version.
+              No 3D file uploaded.
             </div>
           )}
 
-          {/* Metadata & Actions */}
+          {/* Grid Layout for Metadata & Comments */}
           <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
             
-            {/* Left Column: Comments Placeholder */}
-            <Card className="p-0 overflow-hidden">
-               <div className="px-5 py-3 text-sm font-medium bg-brown text-white">Comments</div>
-               <div className="p-10 text-center text-sm text-brown/60">
-                  Comments logic coming soon...
+           <Card className="p-0 overflow-hidden h-fit flex flex-col">
+               <div className="px-5 py-3 text-sm font-medium bg-brown text-white flex justify-between items-center">
+                  <span>Comments</span>
+                  <span className="text-xs text-white/60 font-normal">{comments.length} total</span>
                </div>
+               
+               {/* 1. Comment List */}
+               <CommentList comments={comments} loading={loadingComments} />
+               
+               {/* 2. Comment Form */}
+               {activeVersion && (
+                 <CommentForm 
+                    versionId={activeVersion.id} 
+                    onPosted={() => loadVersionComments(activeVersion.id)} 
+                 />
+               )}
             </Card>
 
             {/* Right Column: Info Panel */}
             <div className="space-y-6">
               <Card className="p-5">
                 <div className="space-y-4">
+                  
+                  {/* Model Header */}
                   <div>
                     <h3 className="text-lg font-semibold text-brown">{model.model_name}</h3>
                     <p className="text-sm text-brown/70">
                       {model.model_categories?.model_category || "Uncategorized"}
                     </p>
                   </div>
+
+                  {/* Metadata Grid */}
                   <dl className="text-sm grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border-t border-brown/10 pt-4">
                     <dt className="text-brown/60">Version:</dt>
                     <dd className="font-medium text-brown">{activeVersion?.version}.0</dd>
@@ -373,7 +368,7 @@ export default function ModelViewerPage() {
                     </dd>
                   </dl>
                   
-                  {/* 2. Images Section with click handler */}
+                  {/* Reference Images Grid */}
                   {activeVersion?.model_images && activeVersion.model_images.length > 0 && (
                     <div className="pt-4 border-t border-brown/10">
                       <h4 className="text-sm font-medium text-brown mb-3">Reference Images</h4>
@@ -396,6 +391,7 @@ export default function ModelViewerPage() {
                     </div>
                   )}
 
+                  {/* 3D File Download */}
                   <div className="pt-2">
                      <a href={modelUrl || "#"} download target="_blank">
                         <Button variant="brown" className="w-full" disabled={!modelUrl}>
