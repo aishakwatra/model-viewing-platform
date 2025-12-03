@@ -5,12 +5,13 @@ export interface Model {
   id: string;
   name: string;
   category: string;
-  version: string; // Current/Latest version
+  version: string;
   status: string;
-  thumbnailUrl: string; // The specific thumbnail for the current/latest version
+  thumbnailUrl: string;
   versions: string[];
-  versionThumbnails?: Record<string, string>; // NEW: Map "1.0" -> "url.jpg"
+  versionThumbnails?: Record<string, string>; 
 }
+
 
 export interface Project {
   id: string;

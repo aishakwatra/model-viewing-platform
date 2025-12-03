@@ -8,6 +8,7 @@ import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
 import { EditIcon, TrashIcon, UploadIcon, ExternalLinkIcon } from "@/app/components/ui/Icons";
 import { UploadVersion } from "@/app/components/dashboard/UploadVersion"; 
+import { EditModelModal } from "@/app/components/dashboard/EditModelModal"
 
 interface ModelCardProps {
   model: Model;
@@ -18,7 +19,8 @@ interface ModelCardProps {
 export function ModelCard({ model, statusOptions = [], onStatusChange }: ModelCardProps) {
   const [selectedVersion, setSelectedVersion] = useState(model.version || "1.0");
   const [isUploadOpen, setUploadOpen] = useState(false);
-  
+  const [isEditOpen, setEditOpen] = useState(false);
+
   const currentStatusId = statusOptions?.find(s => s.status === model.status)?.id || "";
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -44,6 +46,13 @@ export function ModelCard({ model, statusOptions = [], onStatusChange }: ModelCa
              window.location.reload(); 
         }}
       />
+
+      <EditModelModal 
+        isOpen={isEditOpen} 
+        onClose={() => setEditOpen(false)} 
+        model={model}
+        selectedVersion={selectedVersion}
+    />
 
       <Card className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start transition-shadow hover:shadow-md">
         
@@ -128,9 +137,14 @@ export function ModelCard({ model, statusOptions = [], onStatusChange }: ModelCa
             </Button>
             
             <div className="flex items-center gap-1 ml-auto">
-              <button className="p-2 text-brown/40 hover:text-brown hover:bg-brown/5 rounded-lg transition-colors" title="Edit Details">
+              <button 
+                  onClick={() => setEditOpen(true)} 
+                  className="p-2 text-brown/40 hover:text-brown..." 
+                  title="Edit Details"
+              >
                   <EditIcon />
               </button>
+
               <button className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Model">
                   <TrashIcon />
               </button>
