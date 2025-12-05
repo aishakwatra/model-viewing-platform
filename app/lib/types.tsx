@@ -9,7 +9,8 @@ export interface Model {
   status: string;
   thumbnailUrl: string;
   versions: string[];
-  versionThumbnails?: Record<string, string>; 
+  versionThumbnails?: Record<string, string>;
+  versionIds?: Record<string, number>; 
 }
 
 

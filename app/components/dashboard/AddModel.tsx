@@ -3,13 +3,15 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
-import { fetchCategories, addModelToProject } from "@/app/lib/creatorData"; 
+import { addModelToProject } from "@/app/lib/creatorData"; 
+import { validateFile } from "@/app/lib/validation";
 
 interface AddModelProps {
   isOpen: boolean;
   onClose: () => void;
   projectName: string;
   projectId: string; 
+  categories: any[]; 
   onModelAdded?: () => void;
 }
 
@@ -21,27 +23,22 @@ declare module 'react' {
   }
 }
 
-export function AddModel({ isOpen, onClose, projectName, projectId, onModelAdded }: AddModelProps) {
+export function AddModel({ isOpen, onClose, projectName, projectId, categories, onModelAdded }: AddModelProps) {
   const [modelName, setModelName] = useState("");
   const [category, setCategory] = useState("");
-  const [categories, setCategories] = useState<any[]>([]);
+  // const [categories, setCategories] = useState<any[]>([]); // <--- REMOVED STATE
   
-  // Model Files State
   const [modelFiles, setModelFiles] = useState<File[]>([]);
-
-  // Image State
   const [images, setImages] = useState<File[]>([]);
   const [selectedThumbIndex, setSelectedThumbIndex] = useState<number>(0); 
   
-  // UI State
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-        fetchCategories().then(categories => {
-            setCategories(categories || []);
-        });
+        // Internal fetch removed. We use the 'categories' prop now.
+        
         // Reset state on open
         setError(null);
         setModelName("");
@@ -50,12 +47,43 @@ export function AddModel({ isOpen, onClose, projectName, projectId, onModelAdded
         setImages([]);
         setSelectedThumbIndex(0);
     }
-  }, [isOpen]);
+  }, [isOpen]); // Removed 'categories' dependency since it comes from props
 
   const handleModelFolderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
     if (e.target.files) {
-      setModelFiles(Array.from(e.target.files));
+      const files = Array.from(e.target.files);
+      const validFiles: File[] = [];
+
+      // CONSTANTS FOR MODELS
+      const MAX_MODEL_SIZE = 200 * 1024 * 1024; 
+      const ALLOWED_EXTS = ['.gltf', '.bin', '.png', '.jpg', '.jpeg'];
+
+      for (const f of files) {
+        // Check Size 
+        const sizeValidation = validateFile(f, { 
+            maxSize: MAX_MODEL_SIZE, 
+            allowedTypes: [] // Empty array = skip type check in utility
+        });
+
+        if (!sizeValidation.isValid) {
+            setError(`File "${f.name}" is too large. Max size is 200MB.`);
+            return; 
+        }
+
+        // Manually Check Extension (More reliable for 3D files)
+        const lowerName = f.name.toLowerCase();
+        const hasValidExt = ALLOWED_EXTS.some(ext => lowerName.endsWith(ext));
+        
+        if (!hasValidExt) {
+             setError(`File "${f.name}" has an invalid extension. Allowed: .gltf, .bin, textures (.png/.jpg)`);
+             return;
+        }
+
+        validFiles.push(f);
+      }
+
+      setModelFiles(validFiles);
     }
   };
 
@@ -63,7 +91,24 @@ export function AddModel({ isOpen, onClose, projectName, projectId, onModelAdded
     setError(null);
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
-      const combined = [...images, ...filesArray].slice(0, 4);
+      const validImages: File[] = [];
+
+      for (const f of filesArray) {
+        // Strict check for images using utility defaults or custom
+        const validation = validateFile(f, {
+            maxSize: 10 * 1024 * 1024, // 10MB Limit for images
+            allowedTypes: ["image/jpeg", "image/png", "image/webp"]
+        });
+
+        if (!validation.isValid) {
+             setError(`Image "${f.name}": ${validation.errors[0]}`);
+             return;
+        }
+        validImages.push(f);
+      }
+
+      // Append only valid images
+      const combined = [...images, ...validImages].slice(0, 4);
       setImages(combined);
       if (selectedThumbIndex >= combined.length) setSelectedThumbIndex(0);
     }
@@ -170,8 +215,9 @@ export function AddModel({ isOpen, onClose, projectName, projectId, onModelAdded
               className="w-full rounded-lg border border-brown/20 px-4 py-2 text-sm focus:ring-2 focus:ring-gold/60"
             >
               <option value="">Select Category</option>
-              {categories.map(category => (
-                  <option key={category.id} value={category.id}>{category.model_category}</option>
+              {/* Map over the PROPS categories now */}
+              {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.model_category}</option>
               ))}
             </select>
           </div>

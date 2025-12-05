@@ -1,5 +1,7 @@
 import { supabase } from "./supabase";
 
+// app/lib/creatorData.ts
+
 export async function fetchCreatorProjects(creatorId: number) {
   try {
     const { data: rawProjects, error } = await supabase
@@ -17,11 +19,13 @@ export async function fetchCreatorProjects(creatorId: number) {
           model_status ( status ),
           model_categories ( model_category ),
           model_versions (
+            id,              
             version,
             thumbnail_url
           )
         )
       `)
+      
       .eq("creator_id", creatorId)
       .order("id", { ascending: false });
 
@@ -32,15 +36,17 @@ export async function fetchCreatorProjects(creatorId: number) {
       const clientIds = (p.project_clients || []).map((pc: any) => pc.user_id);
 
       const models = (p.models || []).map((m: any) => {
-        // Sort versions descending (newest first)
         const sortedVersions = m.model_versions?.sort((a: any, b: any) => b.version - a.version) || [];
         const latestVer = sortedVersions[0];
         const versionsList = sortedVersions.map((v: any) => v.version.toString()) || [];
         
-        // Map: Version -> Thumbnail URL
+        // Build Maps
         const versionThumbnails: Record<string, string> = {};
+        const versionIds: Record<string, number> = {}; 
+
         sortedVersions.forEach((v: any) => {
              versionThumbnails[v.version.toString()] = v.thumbnail_url;
+             versionIds[v.version.toString()] = v.id; // Now v.id will actually exist!
         });
 
         return {
@@ -49,9 +55,10 @@ export async function fetchCreatorProjects(creatorId: number) {
           category: m.model_categories?.model_category || "Uncategorized",
           version: latestVer?.version?.toString() || "1.0",
           status: m.model_status?.status || "Draft",
-          thumbnailUrl: latestVer?.thumbnail_url || "", // Latest version's thumb
+          thumbnailUrl: latestVer?.thumbnail_url || "", 
           versions: versionsList.length > 0 ? versionsList : ["1.0"],
-          versionThumbnails: versionThumbnails // Pass the map to the UI
+          versionThumbnails,
+          versionIds 
         };
       });
 
@@ -75,6 +82,21 @@ export async function fetchCreatorProjects(creatorId: number) {
     return [];
   }
 }
+
+
+export async function fetchVersionImages(versionId: number) {
+  const { data, error } = await supabase
+    .from("model_images")
+    .select("id, image_path")
+    .eq("model_version_id", versionId);
+  
+  if (error) {
+    console.error("Error fetching images:", error);
+    return [];
+  }
+  return data || [];
+}
+
 
 export async function fetchClients() {
   const { data, error } = await supabase
@@ -582,6 +604,41 @@ export async function updateModelAndVersion(
 
   } catch (error) {
     console.error("Error updating model:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
+  }
+}
+
+
+// CASCADE DELETE PROJECT
+
+export async function deleteProject(projectId: number) {
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', projectId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting project:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteModel(modelId: number) {
+  try {
+    const { error } = await supabase
+      .from('models')
+      .delete()
+      .eq('id', modelId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting model:", error);
     // @ts-ignore
     return { success: false, error: error.message };
   }

@@ -4,38 +4,33 @@ import { useState, useEffect } from "react";
 import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
 import { 
-  fetchCategories, 
   updateModelAndVersion, 
-  uploadModelImages
+  uploadModelImages,
+  fetchVersionImages
 } from "@/app/lib/creatorData"; 
-import { supabase } from "@/app/lib/supabase"; 
 import { Model } from "@/app/lib/types";
+import Image from "next/image";
+import { validateFile } from "@/app/lib/validation";
 
 interface EditModelModalProps {
   isOpen: boolean;
   onClose: () => void;
   model: Model;
-  selectedVersion: string; 
+  selectedVersion: string;
+  versionId: number; 
+  categories: any[]; 
   onSuccess?: () => void;
 }
 
 type ImageItem = 
   | { type: "existing"; url: string; id: string } 
-  | { type: "new"; file: File; preview: string; id: string };
+  | { type: "new"; file: File; preview: string; id: string }
 
-export function EditModelModal({ isOpen, onClose, model, selectedVersion, onSuccess }: EditModelModalProps) {
-  // Metadata State
+export function EditModelModal({ isOpen, onClose, model, selectedVersion, versionId, categories, onSuccess }: EditModelModalProps) {
   const [modelName, setModelName] = useState(model.name);
   const [categoryId, setCategoryId] = useState<number | "">(""); 
-  const [categories, setCategories] = useState<any[]>([]);
   
-  // Real ID State
-  const [realVersionId, setRealVersionId] = useState<number | null>(null);
-  
-  // File State
   const [newModelFiles, setNewModelFiles] = useState<File[]>([]); 
-  
-  // Image State
   const [imageList, setImageList] = useState<ImageItem[]>([]);
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
   const [coverId, setCoverId] = useState<string | null>(null); 
@@ -43,89 +38,76 @@ export function EditModelModal({ isOpen, onClose, model, selectedVersion, onSucc
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. Initialize Metadata & Version ID
   useEffect(() => {
     if (isOpen) {
-        // Fetch Categories
-        fetchCategories().then(cats => {
-            setCategories(cats || []);
-            const currentCat = cats.find((c: any) => c.model_category === model.category);
-            if (currentCat) setCategoryId(currentCat.id);
-        });
-
-        // Pre-fill Name
+        // Name
         setModelName(model.name);
-
-        // Fetch Real Version ID
-        const fetchVersionId = async () => {
-            const versionNum = parseInt(selectedVersion);
-            const { data, error } = await supabase
-                .from("model_versions")
-                .select("id")
-                .eq("model_id", model.id)
-                .eq("version", versionNum)
-                .single();
-            
-            if (data && !error) {
-                setRealVersionId(data.id);
-            } else {
-                console.error("Could not find version ID:", error);
-                setError("Failed to load version details.");
-            }
-        };
-        fetchVersionId();
+        
+        // Category ID (Find it from the passed prop)
+        const currentCat = categories.find((c: any) => c.model_category === model.category);
+        if (currentCat) setCategoryId(currentCat.id);
+        
+        // Reset Files
+        setImagesToDelete([]);
+        setNewModelFiles([]);
+        setError(null);
     }
-  }, [isOpen, model, selectedVersion]);
+  }, [isOpen, model, categories]);
 
+  // 2. Fetch Images (The only async part left)
   useEffect(() => {
-      if (isOpen && realVersionId) {
-          const fetchImages = async () => {
-              const { data, error } = await supabase
-                  .from("model_images")
-                  .select("id, image_path")
-                  .eq("model_version_id", realVersionId);
+      if (isOpen && versionId) {
+          const loadImages = async () => {
+              // Clean helper function
+              const data = await fetchVersionImages(versionId);
               
-              if (data) {
-                  const existingItems: ImageItem[] = data.map(img => ({
-                      type: "existing",
-                      url: img.image_path,
-                      id: img.id.toString()
-                  }));
-                  
-                  setImageList(existingItems);
+              const existingItems: ImageItem[] = data.map((img: any) => ({
+                  type: "existing",
+                  url: img.image_path,
+                  id: img.id.toString()
+              }));
+              
+              setImageList(existingItems);
 
-                  const currentCoverUrl = model.versionThumbnails?.[selectedVersion] || model.thumbnailUrl;
-                  
-                  // --- FIX IS HERE ---
-                  // We check (i.type === 'existing') to confirm it has a .url property
-                  const coverItem = existingItems.find(i => 
-                      i.type === 'existing' && i.url === currentCoverUrl
-                  );
-                  
-                  if (coverItem) {
-                      setCoverId(coverItem.id);
-                  } else if (existingItems.length > 0) {
-                      setCoverId(existingItems[0].id);
-                  }
-              }
+              // Set Cover
+              const currentCoverUrl = model.versionThumbnails?.[selectedVersion] || model.thumbnailUrl;
+              const coverItem = existingItems.find(i => i.type === 'existing' && i.url === currentCoverUrl);
+              
+              if (coverItem) setCoverId(coverItem.id);
+              else if (existingItems.length > 0) setCoverId(existingItems[0].id);
           };
-          fetchImages();
-          
-          setImagesToDelete([]);
-          setNewModelFiles([]);
+          loadImages();
       }
-  }, [isOpen, realVersionId, model, selectedVersion]);
+  }, [isOpen, versionId, model, selectedVersion]);
 
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const files = Array.from(e.target.files);
-      const newItems: ImageItem[] = files.map(f => ({
-          type: "new",
-          file: f,
-          preview: URL.createObjectURL(f),
-          id: "new-" + f.name + Date.now() 
-      }));
+
+        const files = Array.from(e.target.files);
+        const newItems: ImageItem[] = [];
+      
+        for (const f of files) {
+        // Validate
+        const validation = validateFile(f, {
+            maxSize: 10 * 1024 * 1024, // 10MB
+            allowedTypes: ["image/jpeg", "image/png", "image/webp"]
+        });
+
+        if (!validation.isValid) {
+            alert(`Error with "${f.name}": ${validation.errors[0]}`);
+            continue; // Skip this file, try the next
+        }
+
+        // Add if valid
+        newItems.push({
+            type: "new",
+            file: f,
+            preview: URL.createObjectURL(f),
+            id: "new-" + f.name + Date.now() 
+        });
+      }
+      
       
       const combined = [...imageList, ...newItems].slice(0, 4);
       setImageList(combined);
@@ -135,6 +117,8 @@ export function EditModelModal({ isOpen, onClose, model, selectedVersion, onSucc
       }
     }
   };
+
+
 
   const removeImage = (id: string) => {
     const itemToRemove = imageList.find(i => i.id === id);
@@ -153,10 +137,13 @@ export function EditModelModal({ isOpen, onClose, model, selectedVersion, onSucc
   };
 
   const handleSave = async () => {
+      // 1. VALIDATION
       if (!modelName || !categoryId) return alert("Name and Category required");
       if (imageList.length === 0) return alert("Must have at least one image");
       if (!coverId) return alert("Please select a cover image");
-      if (!realVersionId) return alert("Error: Version ID not loaded. Please close and reopen.");
+      
+      // Use the prop directly. If it's 0 or missing, something is wrong with the parent.
+      if (!versionId) return alert("Error: Missing Version ID.");
 
       setLoading(true);
       setError(null);
@@ -164,27 +151,30 @@ export function EditModelModal({ isOpen, onClose, model, selectedVersion, onSucc
       try {
           const versionNum = parseInt(selectedVersion);
 
-          // 1. Separate New Files
+          // 2. Separate New Files for Upload
           const newFiles = imageList
             .filter((i): i is ImageItem & { type: "new" } => i.type === "new")
             .map(i => i.file);
           
+          // 3. Determine Cover URL
           let finalCoverUrl = "";
           const coverItem = imageList.find(i => i.id === coverId);
           
+          // Case A: Cover is an existing image -> Use its URL directly
           if (coverItem?.type === "existing") {
               finalCoverUrl = coverItem.url;
           }
 
-          // 2. Upload New Images
+          // 4. Upload New Images (if any)
           let uploadedUrls: string[] = [];
           if (newFiles.length > 0) {
-             const uploadRes = await uploadModelImages(parseInt(model.id), realVersionId, versionNum, newFiles);
+             // Use 'versionId' PROP here
+             const uploadRes = await uploadModelImages(parseInt(model.id), versionId, versionNum, newFiles);
              
              if (uploadRes.success && uploadRes.imageUrls) {
                  uploadedUrls = uploadRes.imageUrls;
                  
-                 // If cover was one of the NEW images
+                 // Case B: Cover is one of the NEW images -> Find matching URL by index
                  if (coverItem?.type === "new") {
                      const indexInNew = newFiles.indexOf(coverItem.file);
                      if (indexInNew !== -1) {
@@ -196,17 +186,19 @@ export function EditModelModal({ isOpen, onClose, model, selectedVersion, onSucc
              }
           }
 
-          // Fallback
-          if (!finalCoverUrl && uploadedUrls.length > 0) finalCoverUrl = uploadedUrls[0];
-          if (!finalCoverUrl && imageList.length > 0 && imageList[0].type === "existing") finalCoverUrl = imageList[0].url;
+          // Fallback: If cover calculation failed (rare), pick the first available image
+          if (!finalCoverUrl) {
+              if (uploadedUrls.length > 0) finalCoverUrl = uploadedUrls[0];
+              else if (imageList.length > 0 && imageList[0].type === "existing") finalCoverUrl = imageList[0].url;
+          }
 
-          // 3. Execute Update
-          const result = await updateModelAndVersion(parseInt(model.id), realVersionId, versionNum, {
+          // 5. EXECUTE UPDATE
+          const result = await updateModelAndVersion(parseInt(model.id), versionId, versionNum, {
              modelName,
              categoryId: Number(categoryId),
              newThumbnailUrl: finalCoverUrl,
              imagesToDelete,
-             newImages: [], 
+             newImages: [], // Passed empty because we handled uploads manually above
              newModelFiles: newModelFiles.length > 0 ? newModelFiles : undefined
           });
 
@@ -300,10 +292,11 @@ export function EditModelModal({ isOpen, onClose, model, selectedVersion, onSucc
                             }`}
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img 
+                            <Image 
                                 src={item.type === "existing" ? item.url : item.preview} 
                                 alt="preview"
-                                className="w-full h-full object-cover" 
+                                fill                                  
+                                sizes="(max-width: 768px) 100vw, 33vw" 
                             />
                             <button 
                                 onClick={(e) => { e.stopPropagation(); removeImage(item.id); }} 

@@ -7,20 +7,22 @@ import { Model } from "@/app/lib/types";
 import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
 import { EditIcon, TrashIcon, UploadIcon, ExternalLinkIcon } from "@/app/components/ui/Icons";
-import { UploadVersion } from "@/app/components/dashboard/UploadVersion"; 
-import { EditModelModal } from "@/app/components/dashboard/EditModelModal"
+import { UploadVersion } from "@/app/components/dashboard/UploadVersion";
+import { EditModelModal } from "@/app/components/dashboard/EditModelModal";
 
 interface ModelCardProps {
   model: Model;
   statusOptions?: { id: number; status: string }[]; 
   onStatusChange: (modelId: string, newStatusId: string) => void;
+  categories: any[];
+  onDelete: (model: Model) => void; // <--- NEW PROP
 }
 
-export function ModelCard({ model, statusOptions = [], onStatusChange }: ModelCardProps) {
+export function ModelCard({ model, statusOptions = [], onStatusChange, categories, onDelete }: ModelCardProps) {
   const [selectedVersion, setSelectedVersion] = useState(model.version || "1.0");
   const [isUploadOpen, setUploadOpen] = useState(false);
-  const [isEditOpen, setEditOpen] = useState(false);
-
+  const [isEditOpen, setEditOpen] = useState(false); 
+  
   const currentStatusId = statusOptions?.find(s => s.status === model.status)?.id || "";
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -32,35 +34,39 @@ export function ModelCard({ model, statusOptions = [], onStatusChange }: ModelCa
     model.thumbnailUrl || 
     "/sangeet-stage.png";
 
+  // Lookup the ID for the selected version string
+  const selectedVersionId = model.versionIds?.[selectedVersion] || 0;
+
   return (
     <>
-      {/* 1. Insert The Modal */}
+      {/* Upload New Version Modal */}
       <UploadVersion 
         isOpen={isUploadOpen}
         onClose={() => setUploadOpen(false)}
         modelId={model.id}
         modelName={model.name}
-        onVersionAdded={() => {
-             // Optional: trigger a refresh logic if you have one, 
-             // otherwise the page refresh from parent might handle it
-             window.location.reload(); 
-        }}
+        onVersionAdded={() => window.location.reload()}
       />
 
+      {/* Edit Model/Version Modal */}
       <EditModelModal 
         isOpen={isEditOpen} 
         onClose={() => setEditOpen(false)} 
         model={model}
         selectedVersion={selectedVersion}
-    />
+        versionId={selectedVersionId} 
+        categories={categories}       // <--- Pass the prop
+        onSuccess={() => window.location.reload()}
+      />
 
       <Card className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start transition-shadow hover:shadow-md">
         
         {/* Thumbnail Image */}
         <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg border border-brown/10 bg-brown/5 sm:w-64">
-          <img
+          <Image
             src={activeThumbnail} 
             alt={`Thumbnail of ${model.name} v${selectedVersion}`}
+            fill
             className="object-cover transition-opacity duration-300" 
           />
           <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
@@ -127,10 +133,9 @@ export function ModelCard({ model, statusOptions = [], onStatusChange }: ModelCa
 
             <div className="h-6 w-px bg-brown/10 hidden sm:block" />
 
-            {/* 2. Connect the Button */}
             <Button 
               variant="outline" 
-              onClick={() => setUploadOpen(true)} // <--- Trigger Open
+              onClick={() => setUploadOpen(true)} 
               className="gap-2 h-10 px-4 text-sm font-medium border-brown/20 hover:bg-brown/5 hover:border-brown/30 text-brown/80"
             >
               <UploadIcon /> Upload New Version
@@ -138,14 +143,17 @@ export function ModelCard({ model, statusOptions = [], onStatusChange }: ModelCa
             
             <div className="flex items-center gap-1 ml-auto">
               <button 
-                  onClick={() => setEditOpen(true)} 
-                  className="p-2 text-brown/40 hover:text-brown..." 
-                  title="Edit Details"
+                className="p-2 text-brown/40 hover:text-brown hover:bg-brown/5 rounded-lg transition-colors" 
+                title="Edit Details"
+                onClick={() => setEditOpen(true)} // Open Edit Modal
               >
                   <EditIcon />
               </button>
-
-              <button className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Model">
+              <button 
+                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
+                title="Delete Model"
+                onClick={() => onDelete(model)} 
+              >
                   <TrashIcon />
               </button>
             </div>

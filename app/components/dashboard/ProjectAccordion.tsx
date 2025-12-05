@@ -5,8 +5,9 @@ import { Project } from "@/app/lib/types";
 import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
 import { ModelCard } from './ModelCard';
-import { ChevronDownIcon, EditIcon, PlusIcon } from "@/app/components/ui/Icons"; 
+import { ChevronDownIcon, EditIcon, PlusIcon, TrashIcon } from "@/app/components/ui/Icons"; 
 import { AddModel } from './AddModel';
+import { Model } from "@/app/lib/types";
 
 function formatDate(dateString: string) {
   if (!dateString) return "N/A";
@@ -21,21 +22,27 @@ function formatDate(dateString: string) {
 interface ProjectAccordionProps {
   project: Project;
   modelStatuses: any[];
+  categories: any[];
   isOpen: boolean;
   onToggle: () => void;
   activeFilter: string;
   onStatusChange: (modelId: string, newStatusId: string) => void;
   onEditProject: (project: Project) => void;
+  onDeleteProject: (project: Project) => void;
+  onDeleteModel: (model: Model) => void;
 }
 
 export function ProjectAccordion({ 
   project, 
   modelStatuses, 
+  categories,
   isOpen, 
   onToggle, 
   activeFilter, 
   onStatusChange,
-  onEditProject
+  onEditProject,
+  onDeleteProject,
+  onDeleteModel
 }: ProjectAccordionProps) {
   
   const [isAddModelOpen, setAddModelOpen] = useState(false);
@@ -58,6 +65,7 @@ export function ProjectAccordion({
         onClose={() => setAddModelOpen(false)}
         projectName={project.name}
         projectId={project.id}
+        categories={categories}
       />
 
       <Card className="overflow-hidden p-0 transition-shadow hover:shadow-md">
@@ -93,10 +101,10 @@ export function ProjectAccordion({
         {isOpen && (
           <div className="border-t border-brown/10 bg-brown/5 p-5">
             
-            {/* ACTION BAR: Add Model + Edit Project */}
+            {/* ACTION BAR */}
             <div className="flex flex-wrap items-center gap-3 mb-6">
                
-               {/* 1. Add New Model Button */}
+               {/* Add New Model Button */}
                <Button 
                  variant="outline" 
                  className="h-9 text-xs font-medium bg-white border-brown/20 hover:bg-white hover:border-brown/40 hover:text-brown shadow-sm gap-2"
@@ -105,13 +113,21 @@ export function ProjectAccordion({
                 <PlusIcon /> Add New Model
               </Button>
 
-              {/* 2. Edit Project Button (Placed Next to it) */}
+              {/* Edit Project Button*/}
               <Button 
                  variant="outline" 
                  className="h-9 text-xs font-medium bg-white border-brown/20 hover:bg-white hover:border-brown/40 hover:text-brown shadow-sm gap-2"
                  onClick={() => onEditProject(project)}
                >
                 <EditIcon /> Edit Project
+              </Button>
+
+              <Button 
+                 variant="outline" 
+                 className="h-9 text-xs font-medium bg-white border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 shadow-sm gap-2 ml-auto sm:ml-0"
+                 onClick={() => onDeleteProject(project)}
+               >
+                <TrashIcon /> Delete Project
               </Button>
 
             </div>
@@ -123,8 +139,10 @@ export function ProjectAccordion({
                   <ModelCard 
                     key={model.id} 
                     model={model} 
+                    categories={categories}
                     statusOptions={modelStatuses}
-                    onStatusChange={onStatusChange} 
+                    onStatusChange={onStatusChange}
+                    onDelete={onDeleteModel} 
                   />
                 ))
               ) : (
