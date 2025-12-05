@@ -13,7 +13,10 @@ import {
   deleteModel 
 } from "@/app/lib/creatorData";
 
-import { Project } from "@/app/lib/types";
+// 1. IMPORT PORTFOLIO FUNCTIONS
+import { fetchPortfolioPages, PortfolioPage } from "@/app/lib/portfolio";
+
+import { Project, Model } from "@/app/lib/types";
 import { Modal } from "@/app/components/ui/Confirm";
 
 // Components
@@ -22,8 +25,8 @@ import { ProjectAccordion } from "@/app/components/dashboard/ProjectAccordion";
 import { DashboardNav } from '@/app/components/dashboard/DashboardNav';
 import { PortfolioView } from "@/app/components/dashboard/PortfolioView";
 import { ProjectModal } from "@/app/components/dashboard/ProjectModal";
+import { CreatePageModal } from "@/app/components/dashboard/CreatePageModal"
 import { Card } from "@/app/components/ui/Card";
-import { Model } from "@/app/lib/types";
 
 
 export default function CreatorDashboardPage() {
@@ -32,8 +35,14 @@ export default function CreatorDashboardPage() {
   // State
   const [projects, setProjects] = useState<Project[]>([]);
   const [modelStatuses, setModelStatuses] = useState<any[]>([]);
+  
+  // 3. NEW STATE: Portfolio Pages
+  const [portfolioPages, setPortfolioPages] = useState<PortfolioPage[]>([]);
+  const [isCreatePageOpen, setCreatePageOpen] = useState(false);
+
   const [loading, setLoading] = useState(true);
   
+  // Delete/Status Modals State (Keep existing)
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -46,19 +55,21 @@ export default function CreatorDashboardPage() {
   const [pendingStatus, setPendingStatus] = useState<{ modelId: string; newStatusId: string } | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  // Dashboard Filters & UI State
+  // UI State
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("All Projects");
   const [openProjects, setOpenProjects] = useState<string[]>([]);
-  const [activeView, setActiveView] = useState<'home' | 'portfolio'>('home');
+  
+  const [activeView, setActiveView] = useState<string>('home');
+  
   const [categories, setCategories] = useState<any[]>([]);
 
-  // Modal State
+  // Project Modal State
   const [isProjectModalOpen, setProjectModalOpen] = useState(false);
-  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null); // Null = Create Mode
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
 
-  // 1. Initial Data Fetching
+  // Initial Data Fetching
   useEffect(() => {
     async function initDashboard() {
       try {
@@ -70,16 +81,18 @@ export default function CreatorDashboardPage() {
           return;
         }
 
-       // Fetch Projects, Statuses AND Categories in parallel
-        const [projectsData, statusesData, catsData] = await Promise.all([
+
+        const [projectsData, statusesData, catsData, pagesData] = await Promise.all([
            fetchCreatorProjects(currentUser.user_id),
            fetchModelStatuses(),
-           fetchCategories() 
+           fetchCategories(),
+           fetchPortfolioPages(currentUser.user_id) 
         ]);
 
         setProjects(projectsData);
         setModelStatuses(statusesData);
         setCategories(catsData);
+        setPortfolioPages(pagesData); 
 
       } catch (err) {
         console.error("Dashboard loading error:", err);
@@ -91,62 +104,43 @@ export default function CreatorDashboardPage() {
     initDashboard();
   }, [router]);
 
-  // 2. Filtering Logic
+  const handlePageCreated = async () => {
+    const user = getCurrentUser();
+    if(user) {
+        const pages = await fetchPortfolioPages(user.user_id);
+        setPortfolioPages(pages);
+    }
+  };
+
   const filteredProjects = useMemo(() => {
     let currentProjects = projects;
-
-    // Search Filter
     if (searchQuery) {
       currentProjects = currentProjects.filter((p) =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
-    // Date Filter
     if (selectedDate) {
       currentProjects = currentProjects.filter(p => p.startDate === selectedDate);
     }
-
     return currentProjects;
   }, [searchQuery, projects, selectedDate]);
 
-  // 3. Auto-Open Logic based on Tabs
+
   useEffect(() => {
     if (activeTab === "All Projects") { 
-      setOpenProjects([]); 
+        setOpenProjects(projects.map(p => p.id)); 
     } else { 
       const projectsToOpen = projects
         .filter(p => p.models.some(m => m.category === activeTab))
         .map(p => p.id);
       setOpenProjects(projectsToOpen);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]); 
-
-  // --- HANDLERS ---
+  }, [activeTab, projects]); 
 
   const toggleProject = (projectId: string) => { 
     setOpenProjects(prev =>
-      prev.includes(projectId)
-        ? prev.filter(id => id !== projectId)
-        : [...prev, projectId]
+      prev.includes(projectId) ? prev.filter(id => id !== projectId) : [...prev, projectId]
     );
-  };
-
-  const handleStatusChange = async (modelId: string, newStatusId: string) => { 
-     // Optimistic UI Update
-     const statusObj = modelStatuses.find(s => s.id.toString() === newStatusId);
-     const statusLabel = statusObj ? statusObj.status : "Unknown";
-
-     setProjects(currentProjects =>
-      currentProjects.map(p => ({
-        ...p, 
-        models: p.models.map(m => m.id === modelId ? { ...m, status: statusLabel } : m) 
-      }))
-    );
-
-    // Database Update
-    await updateModelStatus(Number(modelId), Number(newStatusId));
   };
 
   const handleRefresh = async () => {
@@ -159,60 +153,38 @@ export default function CreatorDashboardPage() {
       }
   };
 
-  // --- MODAL HANDLERS ---
+  // Modal Triggers
+  const handleCreateClick = () => { setProjectToEdit(null); setProjectModalOpen(true); };
+  const handleEditClick = (project: Project) => { setProjectToEdit(project); setProjectModalOpen(true); };
+  const handleDeleteClick = (project: Project) => { setProjectToDelete(project); setDeleteModalOpen(true); };
+  const handleDeleteModelClick = (model: Model) => { setModelToDelete(model); setModelDeleteModalOpen(true); };
+  const handleStatusChangeClick = (modelId: string, newStatusId: string) => { setPendingStatus({ modelId, newStatusId }); setStatusModalOpen(true); };
 
-  const handleCreateClick = () => {
-    setProjectToEdit(null); // Clear edit state -> Create Mode
-    setProjectModalOpen(true);
-  };
-
-  const handleEditClick = (project: Project) => {
-    setProjectToEdit(project); // Set project -> Edit Mode
-    setProjectModalOpen(true);
-  };
-
-  const handleDeleteClick = (project: Project) => {
-    setProjectToDelete(project);
-    setDeleteModalOpen(true);
-  };
-
+  // Delete/Status Handlers
   const confirmDelete = async () => {
     if (!projectToDelete) return;
-
     setIsDeleting(true);
     const result = await deleteProject(parseInt(projectToDelete.id));
-    
     if (result.success) {
-      // Remove from local state to avoid full reload
       setProjects(prev => prev.filter(p => p.id !== projectToDelete.id));
       setDeleteModalOpen(false);
       setProjectToDelete(null);
     } else {
-      alert("Failed to delete project. Ensure database constraints are configured or try again.");
+      alert("Failed to delete project.");
     }
     setIsDeleting(false);
   };
 
-  const handleDeleteModelClick = (model: Model) => {
-    setModelToDelete(model);
-    setModelDeleteModalOpen(true);
-  };
-
   const confirmModelDelete = async () => {
     if (!modelToDelete) return;
-
     setIsModelDeleting(true);
     const result = await deleteModel(parseInt(modelToDelete.id));
-
     if (result.success) {
-      // Optimistically remove model from UI
-      setProjects(currentProjects => 
-        currentProjects.map(p => ({
+      setProjects(current => current.map(p => ({
           ...p,
           models: p.models.filter(m => m.id !== modelToDelete.id),
-          modelCount: p.models.filter(m => m.id !== modelToDelete.id).length // Update count
-        }))
-      );
+          modelCount: p.models.filter(m => m.id !== modelToDelete.id).length
+      })));
       setModelDeleteModalOpen(false);
       setModelToDelete(null);
     } else {
@@ -221,65 +193,39 @@ export default function CreatorDashboardPage() {
     setIsModelDeleting(false);
   };
 
-
-  const handleStatusChangeClick = (modelId: string, newStatusId: string) => {
-    setPendingStatus({ modelId, newStatusId });
-    setStatusModalOpen(true);
-  };
-
-  // 2. Execute the change after confirmation
   const confirmStatusChange = async () => {
     if (!pendingStatus) return;
-
     setIsUpdatingStatus(true);
     const { modelId, newStatusId } = pendingStatus;
-
-    // Optimistic UI Update (Find the status text first)
     const statusObj = modelStatuses.find(s => s.id.toString() === newStatusId);
     const statusLabel = statusObj ? statusObj.status : "Unknown";
-
     try {
-      // Database Update
       await updateModelStatus(Number(modelId), Number(newStatusId));
-
-      // State Update
-      setProjects(currentProjects =>
-        currentProjects.map(p => ({
-          ...p, 
-          models: p.models.map(m => m.id === modelId ? { ...m, status: statusLabel } : m) 
-        }))
-      );
-
+      setProjects(current => current.map(p => ({
+        ...p, 
+        models: p.models.map(m => m.id === modelId ? { ...m, status: statusLabel } : m) 
+      })));
       setStatusModalOpen(false);
       setPendingStatus(null);
     } catch (err) {
       alert("Failed to update status");
-      console.error(err);
     } finally {
       setIsUpdatingStatus(false);
     }
   };
 
-  // Helper to get names for the modal text
   const getStatusChangeDetails = () => {
     if (!pendingStatus) return { modelName: "", statusName: "" };
-    
-    // Find Model Name
     let modelName = "Unknown Model";
     for (const p of projects) {
         const m = p.models.find(m => m.id === pendingStatus.modelId);
         if (m) { modelName = m.name; break; }
     }
-
-    // Find Status Name
     const statusObj = modelStatuses.find(s => s.id.toString() === pendingStatus.newStatusId);
-    
     return { modelName, statusName: statusObj?.status || "Unknown" };
   };
-
   const { modelName, statusName } = getStatusChangeDetails();
 
-  // 4. Render Loading State
   if (loading) {
     return (
       <div className="min-h-screen bg-beige flex items-center justify-center">
@@ -290,114 +236,64 @@ export default function CreatorDashboardPage() {
 
   return (
     <>
-     
       <ProjectModal 
         isOpen={isProjectModalOpen}
         onClose={() => setProjectModalOpen(false)}
-        onSuccess={handleRefresh} // Refresh list on success
-        projectToEdit={projectToEdit} // Pass project data if editing
+        onSuccess={handleRefresh}
+        projectToEdit={projectToEdit}
       />
 
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        title="Delete Project"
-        onConfirm={confirmDelete}
-        onConfirmLabel={isDeleting ? "Deleting..." : "Yes, Delete Project"}
-        onCancelLabel="Cancel"
-      >
+      
+      <CreatePageModal 
+         isOpen={isCreatePageOpen} 
+         onClose={() => setCreatePageOpen(false)}
+         onSuccess={handlePageCreated}
+      />
+
+      
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Delete Project" onConfirm={confirmDelete} onConfirmLabel={isDeleting ? "Deleting..." : "Yes, Delete Project"} onCancelLabel="Cancel">
         <div className="space-y-3">
             {projectToDelete && projectToDelete.modelCount > 0 ? (
                 <div className="rounded-lg bg-red-50 p-3 border border-red-100">
-                    <p className="text-sm font-semibold text-red-800 mb-1">
-                        ⚠️ Warning: Models Attached
-                    </p>
-                    <p className="text-sm text-red-700">
-                        This project contains <strong>{projectToDelete.modelCount} models</strong>. 
-                        Deleting this project will <strong>permanently delete</strong> all associated models, versions, and comments.
-                    </p>
+                    <p className="text-sm font-semibold text-red-800 mb-1">⚠️ Warning: Models Attached</p>
+                    <p className="text-sm text-red-700">This project contains <strong>{projectToDelete.modelCount} models</strong>. Deleting it will permanently delete all data.</p>
                 </div>
-            ) : (
-                <p className="text-brown/80">
-                    Are you sure you want to delete <strong>{projectToDelete?.name}</strong>? 
-                    This action cannot be undone.
-                </p>
-            )}
-            
-            {projectToDelete?.modelCount! > 0 && (
-                <p className="text-xs text-brown/60 mt-2">
-                    Please confirm you understand that all data inside this project will be lost.
-                </p>
-            )}
+            ) : (<p className="text-brown/80">Are you sure you want to delete <strong>{projectToDelete?.name}</strong>?</p>)}
         </div>
       </Modal>
 
-      <Modal
-        isOpen={isModelDeleteModalOpen}
-        onClose={() => setModelDeleteModalOpen(false)}
-        title="Delete Model"
-        onConfirm={confirmModelDelete}
-        onConfirmLabel={isModelDeleting ? "Deleting..." : "Yes, Delete Model"}
-        onCancelLabel="Cancel"
-      >
+      <Modal isOpen={isModelDeleteModalOpen} onClose={() => setModelDeleteModalOpen(false)} title="Delete Model" onConfirm={confirmModelDelete} onConfirmLabel={isModelDeleting ? "Deleting..." : "Yes, Delete Model"} onCancelLabel="Cancel">
         <div className="space-y-3">
             <div className="rounded-lg bg-red-50 p-3 border border-red-100">
-                <p className="text-sm font-semibold text-red-800 mb-1">
-                    ⚠️ Permanent Action
-                </p>
-                <p className="text-sm text-red-700">
-                    Are you sure you want to delete <strong>{modelToDelete?.name}</strong>?
-                </p>
-                <p className="text-sm text-red-700 mt-2 font-medium">
-                    All model versions, images, and comments will be deleted.
-                </p>
+                <p className="text-sm font-semibold text-red-800 mb-1">⚠️ Permanent Action</p>
+                <p className="text-sm text-red-700">Are you sure you want to delete <strong>{modelToDelete?.name}</strong>?</p>
             </div>
-            <p className="text-xs text-brown/60">
-                This action cannot be undone.
-            </p>
         </div>
       </Modal>
 
-      <Modal
-        isOpen={isStatusModalOpen}
-        onClose={() => setStatusModalOpen(false)}
-        title="Change Model Status"
-        onConfirm={confirmStatusChange}
-        onConfirmLabel={isUpdatingStatus ? "Updating..." : "Confirm Change"}
-        onCancelLabel="Cancel"
-      >
-        <div className="space-y-2">
-            <p className="text-brown/80">
-                Are you sure you want to change the status of <strong>{modelName}</strong> to:
-            </p>
-            <div className="flex justify-center py-2">
-                <span className="inline-flex items-center rounded-full bg-gold/10 px-3 py-1 text-sm font-medium text-brown border border-gold/20">
-                    {statusName}
-                </span>
-            </div>
-            <p className="text-xs text-brown/60 text-center">
-                This may affect visibility for clients.
-            </p>
-        </div>
+      <Modal isOpen={isStatusModalOpen} onClose={() => setStatusModalOpen(false)} title="Change Status" onConfirm={confirmStatusChange} onConfirmLabel={isUpdatingStatus ? "Updating..." : "Confirm"} onCancelLabel="Cancel">
+        <p className="text-brown/80">Change <strong>{modelName}</strong> to <span className="font-bold">{statusName}</span>?</p>
       </Modal>
-      
 
       <div className="min-h-screen bg-beige">
         <div className="border-b border-brown/10 bg-white shadow-sm">
           <div className="mx-auto max-w-7xl space-y-4 px-6 py-4 md:px-8">
-            <h1 className="text-2xl font-semibold text-brown">Creator Dashboard</h1>
-            
+            <h1 className="text-2xl font-semibold text-brown">Creator Dashboard</h1>           
+          
             <DashboardNav 
               activeView={activeView} 
               onViewChange={setActiveView}
-              onCreateProjectClick={handleCreateClick} // Open Modal in Create Mode
+              onCreateProjectClick={handleCreateClick}
               profileHref="/profile?from=creator"
+              portfolioPages={portfolioPages}
+              onNewPageClick={() => setCreatePageOpen(true)}
             />
           </div>
         </div>
 
         <div className="mx-auto mt-6 w-full max-w-7xl space-y-6 px-6 md:px-8">
-          {activeView === 'home' && (
+          {/* Conditional rendring - Home or portfolio */}
+          {activeView === 'home' ? (
             <>
               <DashboardFilters
                 searchQuery={searchQuery}
@@ -427,18 +323,18 @@ export default function CreatorDashboardPage() {
                 ) : (
                   <Card className="p-8 text-center">
                     <div className="text-brown/70 mb-2">No projects found.</div>
-                    <button 
-                        onClick={handleCreateClick}
-                        className="text-sm text-gold hover:underline"
-                    >
-                        Create your first project
-                    </button>
+                    <button onClick={handleCreateClick} className="text-sm text-gold hover:underline">Create your first project</button>
                   </Card>
                 )}
               </div>
             </>
+          ) : (
+             
+             <PortfolioView 
+                pageId={parseInt(activeView)} 
+                allProjects={projects} 
+             />
           )}
-          {activeView === 'portfolio' && <PortfolioView />}
         </div>
       </div>
     </>

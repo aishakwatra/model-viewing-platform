@@ -137,11 +137,52 @@ export async function fetchCategories() {
 }
 
 export async function updateModelStatus(modelId: number, statusId: number) {
+  try {
+    // 1. Perform the Status Update
     const { error } = await supabase
-        .from("models")
-        .update({ status_id: statusId })
-        .eq("id", modelId);
-    return { success: !error };
+      .from("models")
+      .update({ status_id: statusId })
+      .eq("id", modelId);
+
+    if (error) throw error;
+
+    // AUTOMATIC CLEANUP: Check if the new status is "Portfolio Safe"
+    // Fetch the text name of the status we just set
+    const { data: statusData, error: statusError } = await supabase
+      .from("model_status")
+      .select("status")
+      .eq("id", statusId)
+      .single();
+
+    if (statusError) {
+      console.error("Error checking status name:", statusError);
+    } else {
+      const newStatus = statusData?.status;
+      
+      // Define which statuses are allowed on Portfolio Pages
+      const allowedOnPortfolio = ["Approved", "Released for Download"];
+
+      // If the new status is NOT allowed, remove this model from ALL portfolio pages
+      if (newStatus && !allowedOnPortfolio.includes(newStatus)) {
+        console.log(`Model ${modelId} moved to '${newStatus}'. Removing from portfolios...`);
+        
+        const { error: deleteError } = await supabase
+          .from("portfolio_page_models")
+          .delete()
+          .eq("model_id", modelId);
+
+        if (deleteError) {
+          console.error("Failed to remove model from portfolios:", deleteError);
+        }
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating model status:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
+  }
 }
 
 
