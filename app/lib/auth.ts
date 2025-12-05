@@ -50,7 +50,7 @@ export async function signUp(userData: SignUpData, role: UserRole = "user") {
     const roleId = ROLE_IDS[role];
 
     // Step 2: Get the next user_id (since it's not auto-generated in your schema)
-    const { data: existingUsers, error: countError } = await supabase
+    const { data: existingUsers } = await supabase
       .from("users")
       .select("user_id")
       .order("user_id", { ascending: false })
@@ -255,6 +255,67 @@ export async function getCurrentAuthUser() {
 }
 
 /**
+ * Verify user role directly from Supabase database
+ * This is more secure than checking localStorage
+ * @param userId - The user_id to verify
+ * @returns The user role ID or null if not found
+ */
+export async function verifyUserRoleFromDatabase(userId: number): Promise<number | null> {
+  try {
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("user_role_id, is_approved")
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !user) {
+      console.error("Failed to verify user role:", error);
+      return null;
+    }
+
+    // Check if user is approved
+    if (!user.is_approved) {
+      console.error("User is not approved");
+      return null;
+    }
+
+    return user.user_role_id;
+  } catch (error) {
+    console.error("Error verifying user role:", error);
+    return null;
+  }
+}
+
+/**
+ * Check if user has specific role by verifying against database
+ * @param userId - The user_id to check
+ * @param roleId - The required role ID (use ROLE_IDS constant)
+ * @returns true if user has the required role, false otherwise
+ */
+export async function hasRole(userId: number, roleId: number): Promise<boolean> {
+  const userRoleId = await verifyUserRoleFromDatabase(userId);
+  return userRoleId === roleId;
+}
+
+/**
+ * Check if user is admin by verifying against database
+ * @param userId - The user_id to check
+ * @returns true if user is admin, false otherwise
+ */
+export async function isAdmin(userId: number): Promise<boolean> {
+  return hasRole(userId, ROLE_IDS.admin);
+}
+
+/**
+ * Check if user is creator by verifying against database
+ * @param userId - The user_id to check
+ * @returns true if user is creator, false otherwise
+ */
+export async function isCreator(userId: number): Promise<boolean> {
+  return hasRole(userId, ROLE_IDS.creator);
+}
+
+/**
  * Save user to local storage (client-side only)
  */
 export function saveCurrentUser(user: any) {
@@ -300,7 +361,7 @@ export async function uploadProfilePicture(file: File, authUserId: string) {
     const fileName = `${authUserId}-${Date.now()}.${fileExt}`;
     const filePath = `profile-pictures/${fileName}`;
 
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from("profile-pictures")
       .upload(filePath, file);
 

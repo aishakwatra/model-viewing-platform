@@ -8,7 +8,6 @@ import { ROLE_IDS } from "@/app/lib/auth";
 import { Button } from "@/app/components/ui/Button";
 import { Card } from "@/app/components/ui/Card";
 import { Modal } from "@/app/components/ui/Confirm";
-import { Tabs } from "@/app/components/Tabs";
 import { PendingRequestsList } from "@/app/components/admin/PendingRequestsList";
 import {
   fetchUnapprovedUsers,
@@ -17,6 +16,7 @@ import {
 } from "@/app/lib/admin";
 import { ModelCategory, supabase } from "@/app/lib/supabase";
 import { generateAdminReport, downloadExcelFile } from "@/app/lib/reportGenerator";
+import { SecureAuthModal } from "@/app/components/auth/SecureAuthModal";
 
 type ManageCategoryAction = "create" | "read" | "update" | "delete";
 
@@ -55,10 +55,11 @@ export default function AdminDashboard() {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
 
-  const requests = [
-    { id: 1, name: "Priya Sharma", email: "priya.sharma@email.com", role: "Creator", requestedDate: "March 20, 2024" },
-    { id: 2, name: "Rajesh Kumar", email: "rajesh.kumar@email.com", role: "Client", requestedDate: "March 22, 2024" },
-  ];
+  // Secure authentication state
+  const [showAuthModal, setShowAuthModal] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [verifiedUser, setVerifiedUser] = useState<any>(null);
+
   const users = [
     { id: 1, name: "Sarah Johnson", email: "sarah.j@email.com", role: "Client", status: "Active", projects: 12, functions: 45, initials: "SJ" },
     { id: 2, name: "Michael Chen", email: "m.chen@email.com", role: "Creator", status: "Active", projects: 8, functions: 32, initials: "MC" },
@@ -74,6 +75,13 @@ export default function AdminDashboard() {
   const [categoryActionType, setCategoryActionType] = useState<ManageCategoryAction | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<ModelCategory | null>(null);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+
+  // Handle successful authentication
+  const handleAuthSuccess = (authenticatedUser: any) => {
+    setVerifiedUser(authenticatedUser);
+    setIsAuthenticated(true);
+    setShowAuthModal(false);
+  };
 
   // Admin role protection - Only user_role_id = 3 can access
   useEffect(() => {
@@ -175,6 +183,11 @@ export default function AdminDashboard() {
   );
 
   const loadCategories = useCallback(async () => {
+    // Only load if authenticated
+    if (!isAuthenticated) {
+      return;
+    }
+    
     setCategoriesLoading(true);
     setCategoriesError(null);
     try {
@@ -188,13 +201,19 @@ export default function AdminDashboard() {
     } finally {
       setCategoriesLoading(false);
     }
-  }, [manageCategories]);
+  }, [manageCategories, isAuthenticated]);
 
   useEffect(() => {
     loadCategories();
   }, [loadCategories]);
 
   const handleCreateCategory = async () => {
+    // Check authentication
+    if (!isAuthenticated) {
+      setCategoriesError("Please authenticate first.");
+      return;
+    }
+    
     const trimmedName = newCategoryName.trim();
     if (!trimmedName) {
       setCategoriesError("Category name cannot be empty.");
@@ -338,6 +357,12 @@ export default function AdminDashboard() {
   };
 
   const handleGenerateReport = async () => {
+    // Check authentication
+    if (!isAuthenticated) {
+      setReportError("Please authenticate first.");
+      return;
+    }
+    
     // Validate that at least one option is selected
     const hasSelection = Object.values(selectedReportOptions).some((val) => val);
     if (!hasSelection) {
@@ -395,38 +420,65 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-beige">
+      {/* Secure Authentication Modal - Shows on page load */}
+      <SecureAuthModal
+        isOpen={showAuthModal}
+        requiredRole="admin"
+        onAuthSuccess={handleAuthSuccess}
+      />
+
       <div className="border-b border-brown/10 bg-white shadow-sm sticky top-0 z-10">
         <div className="mx-auto max-w-7xl px-6 md:px-8">
           <div className="flex h-16 items-center justify-between">
             <h1 className="text-xl font-semibold text-brown">Admin Dashboard</h1>
+            {isAuthenticated && verifiedUser && (
+              <div className="text-sm text-brown/70">
+                Welcome, {verifiedUser.full_name || verifiedUser.email}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-7xl space-y-6 px-6 py-8 md:px-8">
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-brown/5 border border-brown/10 self-start">
-          {tabs.map((tab) => (
-            <Button
-              key={tab.key}
-              variant={activeTab === tab.key ? 'brown' : 'ghost'}
-              onClick={() => setActiveTab(tab.key)}
-              className="flex items-center gap-2"
-            >
-              {tab.icon} {tab.label}
-            </Button>
-          ))}
-        </div>
-
-        {activeTab === "requests" && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-brown">Pending Account Requests</h2>
-            <PendingRequestsList
-              fetchRequests={fetchUnapprovedUsers}
-              approveRequest={approveUser}
-              rejectRequest={rejectUser}
-            />
-          </div>
+        {/* Show content only if authenticated */}
+        {!isAuthenticated && (
+          <Card className="p-8 text-center">
+            <div className="text-brown/70">
+              <svg className="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <h2 className="text-lg font-semibold text-brown mb-2">Authentication Required</h2>
+              <p className="text-sm">Please sign in to access the admin dashboard.</p>
+            </div>
+          </Card>
         )}
+
+        {isAuthenticated && (
+          <>
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-brown/5 border border-brown/10 self-start">
+              {tabs.map((tab) => (
+                <Button
+                  key={tab.key}
+                  variant={activeTab === tab.key ? 'brown' : 'ghost'}
+                  onClick={() => setActiveTab(tab.key)}
+                  className="flex items-center gap-2"
+                >
+                  {tab.icon} {tab.label}
+                </Button>
+              ))}
+            </div>
+
+            {activeTab === "requests" && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-brown">Pending Account Requests</h2>
+                <PendingRequestsList
+                  fetchRequests={fetchUnapprovedUsers}
+                  approveRequest={approveUser}
+                  rejectRequest={rejectUser}
+                />
+              </div>
+            )}
 
         {activeTab === "users" && (
           <div className="grid gap-4">
@@ -585,6 +637,8 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
+        )}
+          </>
         )}
 
         <Modal
