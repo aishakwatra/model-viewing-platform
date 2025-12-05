@@ -39,21 +39,41 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           onSuccess();
         }
 
-        // Redirect based on user role
-        const userRoleId = result.user.user_role_id;
+        const roleId = result.user.user_role_id;
+
+        // 2. Get Role Name (String) - Handle Array vs Object response from Supabase
+        const roleData = result.user.user_roles;
+        let roleString = "";
         
-        // Admin role (user_role_id = 3)
-        if (userRoleId === 3) {
+        if (Array.isArray(roleData) && roleData.length > 0) {
+            roleString = roleData[0]?.role || "";
+        } else if (roleData && typeof roleData === 'object') {
+            // @ts-ignore
+            roleString = roleData.role || "";
+        }
+
+        console.log(`🔍 Role Detected -> ID: ${roleId}, Name: "${roleString}"`);
+
+        // --- ROUTING LOGIC ---
+        
+        // CREATOR
+        if (roleId === 1 || roleString === "CREATOR") {
+          console.log("➡️ Redirecting to Creator Dashboard");
+          router.push("/creator/dashboard");
+        } 
+        // ADMIN
+        else if (roleId === 3 || roleString === "ADMIN") {
+          console.log("➡️ Redirecting to Admin Dashboard");
           router.push("/P_AdminDashboard");
-        }
-        // Creator role (user_role_id = 1)
-        else if (userRoleId === 1) {
-          router.push("/dashboard");
-        }
-        // Regular user role (user_role_id = 2)
-        else {
+        } 
+        else if (roleId === 2 || roleString === "USER") {
+          console.log("➡️ Redirecting to Client Dashboard");
           router.push("/P_ClientDashboard");
+        } 
+        else {
+          router.push("/auth");
         }
+
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign in");

@@ -1,45 +1,58 @@
-"use client";
-
 import Link from "next/link";
 import { Button } from '@/app/components/ui/Button';
 import { HomeIcon, PortfolioIcon, PlusIcon, ProfileIcon } from '@/app/components/ui/Icons';
+import { PortfolioPage } from "@/app/lib/portfolio";
 
 interface DashboardNavProps {
   activeView: string;
-  onViewChange: (view: 'home' | 'portfolio') => void;
-  onCreateProjectClick: () => void; // 1. ADD NEW PROP
+  onViewChange: (view: string) => void;
+  onCreateProjectClick: () => void;
   profileHref?: string;
+  portfolioPages: PortfolioPage[];
+  onNewPageClick: () => void;
 }
 
-export function DashboardNav({ activeView, onViewChange, onCreateProjectClick, profileHref = "/profile" }: DashboardNavProps) {
-  const portfolioPages = [
-    { id: 'portfolio', name: 'Portfolio Page 1' }
-  ];
+export function DashboardNav({ 
+  activeView, 
+  onViewChange, 
+  onCreateProjectClick, 
+  profileHref = "/profile",
+  portfolioPages,
+  onNewPageClick
+}: DashboardNavProps) {
 
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-1 p-1 rounded-xl bg-brown/5 border border-brown/10">
+      <div className="flex items-center gap-1 p-1 rounded-xl bg-brown/5 border border-brown/10 overflow-x-auto max-w-[60vw] scrollbar-hide">
         <Button 
           variant={activeView === 'home' ? 'brown' : 'ghost'} 
           onClick={() => onViewChange('home')}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 whitespace-nowrap"
         >
           <HomeIcon /> Home
         </Button>
+        
+        {/* DYNAMIC PAGES */}
         {portfolioPages.map(page => (
           <Button 
             key={page.id}
-            variant={activeView === page.id ? 'brown' : 'ghost'} 
-            onClick={() => onViewChange('portfolio')}
-            className="flex items-center gap-2"
+            variant={activeView === page.id.toString() ? 'brown' : 'ghost'} 
+            onClick={() => onViewChange(page.id.toString())}
+            className="flex items-center gap-2 whitespace-nowrap"
           >
-            <PortfolioIcon /> {page.name}
+            <PortfolioIcon /> {page.portfolio_page_name} 
           </Button>
         ))}
-        <Button variant="ghost" className="flex items-center gap-2">
+
+        <Button 
+            variant="ghost" 
+            className="flex items-center gap-2 whitespace-nowrap"
+            onClick={onNewPageClick}
+        >
            <PlusIcon /> New Page
         </Button>
       </div>
+      
       <div className="flex items-center gap-3">
         <Link
           href={profileHref}
@@ -50,7 +63,7 @@ export function DashboardNav({ activeView, onViewChange, onCreateProjectClick, p
         <Button 
           variant='gold' 
           className="flex items-center gap-2"
-          onClick={onCreateProjectClick} // 2. ATTACH ONCLICK HANDLER
+          onClick={onCreateProjectClick}
         >
           <PlusIcon /> Create New Project
         </Button>
@@ -58,4 +71,3 @@ export function DashboardNav({ activeView, onViewChange, onCreateProjectClick, p
     </div>
   );
 }
-
