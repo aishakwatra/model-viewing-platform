@@ -119,6 +119,10 @@ export async function fetchProjectModels(projectId: number) {
         ),
         model_status (
           status
+        ),
+        model_versions (
+          version,
+          thumbnail_url
         )
       `
       )

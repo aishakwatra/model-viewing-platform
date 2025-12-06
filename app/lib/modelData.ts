@@ -158,3 +158,20 @@ export async function postComment(versionId: number, userId: number, text: strin
     return { success: false, error: error.message };
   }
 }
+
+
+export async function deleteComment(commentId: number) {
+  try {
+    const { error } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", commentId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
+  }
+}

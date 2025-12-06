@@ -31,6 +31,7 @@ interface ModelData {
   status_id: number | null;
   model_categories?: { model_category: string } | null;
   model_status?: { status: string } | null;
+  model_versions?: { version: number; thumbnail_url: string | null }[];
 }
 
 interface FavouriteData {
@@ -121,8 +122,8 @@ export default function ClientDashboard() {
       ]);
       
       console.log(`✅ Loaded ${projectsData.length} projects and ${favouritesData.length} favourites`);
-      setProjects(projectsData as ProjectData[]);
-      setFavourites(favouritesData as FavouriteData[]);
+      setProjects(projectsData as any as ProjectData[]);
+setFavourites(favouritesData as any as FavouriteData[]);
     } catch (err) {
       console.error("Error loading user data:", err);
       throw err;
@@ -136,7 +137,7 @@ export default function ClientDashboard() {
     
     try {
       const models = await fetchProjectModels(projectId);
-      setProjectModels(prev => ({ ...prev, [projectId]: models as ModelData[] }));
+      setProjectModels(prev => ({ ...prev, [projectId]: models as any as ModelData[] }));
     } catch (err) {
       console.error("Failed to load project models:", err);
     }
@@ -392,18 +393,25 @@ export default function ClientDashboard() {
                           {isOpen && models.length > 0 && (
                             <div className="p-4 border-t border-brown/10 bg-brown/5">
                               <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                                {models.map(model => (
-                                  <ClientFunctionCard 
-                                    key={model.id} 
-                                    func={{
-                                      id: model.id.toString(),
-                                      name: model.model_name,
-                                      category: model.model_categories?.model_category || "Uncategorized",
-                                      version: "1.0", // Will need to fetch latest version if needed
-                                      imageUrl: "/sangeet-stage.png" // Placeholder
-                                    }} 
-                                  />
-                                ))}
+                                {models.map((model) => {
+                                  const sortedVersions = model.model_versions?.sort((a, b) => b.version - a.version) || [];
+                                  const latestVer = sortedVersions[0];
+                                  const versionStr = latestVer?.version?.toString() || "1.0";
+                                  const thumbUrl = latestVer?.thumbnail_url || "/sangeet-stage.png";
+
+                                  return (
+                                    <ClientFunctionCard 
+                                      key={model.id} 
+                                      func={{
+                                        id: model.id.toString(),
+                                        name: model.model_name,
+                                        category: model.model_categories?.model_category || "Uncategorized",
+                                        version: versionStr, 
+                                        imageUrl: thumbUrl  
+                                      }} 
+                                    />
+                                  );
+                                })}
                               </div>
                             </div>
                           )}

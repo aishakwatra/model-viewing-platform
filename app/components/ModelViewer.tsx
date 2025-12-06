@@ -32,7 +32,7 @@ export function ModelViewer({ modelPath }: ModelViewerProps) {
 
         <Suspense fallback={
           <Text color="#5C2019" anchorX="center" anchorY="middle" fontSize={0.5}>
-            Loading 3D Model
+            Loading Model
           </Text>
         }>
           <GltfModel modelPath={modelPath} />
