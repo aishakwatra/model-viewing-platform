@@ -70,7 +70,18 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create account");
+      const errorMessage = err instanceof Error ? err.message : "Failed to create account";
+      
+      // Provide more helpful error messages
+      if (errorMessage.includes("pending approval")) {
+        setError("Your account is awaiting approval. Please wait for an administrator to review your account before attempting to sign in.");
+      } else if (errorMessage.includes("rejected")) {
+        setError("Your previous account was rejected. Please contact support if you believe this is an error.");
+      } else if (errorMessage.includes("already exists")) {
+        setError("An account with this email already exists. Please sign in instead.");
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

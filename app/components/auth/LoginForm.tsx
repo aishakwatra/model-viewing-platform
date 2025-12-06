@@ -28,6 +28,9 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       const result = await signIn(email, password);
 
       if (result.success) {
+        console.log("✅ Sign in successful, user data:", result.user);
+        console.log("✅ User approval status:", result.user.is_approved);
+        
         // Save user to local storage
         saveCurrentUser(result.user);
         
@@ -55,28 +58,39 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         console.log(`🔍 Role Detected -> ID: ${roleId}, Name: "${roleString}"`);
 
         // --- ROUTING LOGIC ---
+        // Use window.location instead of router.push to force a full page reload
+        // This ensures the auth context is fully updated before the new page loads
         
         // CREATOR
         if (roleId === 1 || roleString === "CREATOR") {
           console.log("➡️ Redirecting to Creator Dashboard");
-          router.push("/creator/dashboard");
+          window.location.href = "/creator/dashboard";
         } 
         // ADMIN
         else if (roleId === 3 || roleString === "ADMIN") {
           console.log("➡️ Redirecting to Admin Dashboard");
-          router.push("/P_AdminDashboard");
+          window.location.href = "/P_AdminDashboard";
         } 
         else if (roleId === 2 || roleString === "USER") {
           console.log("➡️ Redirecting to Client Dashboard");
-          router.push("/P_ClientDashboard");
+          window.location.href = "/P_ClientDashboard";
         } 
         else {
-          router.push("/auth");
+          window.location.href = "/auth";
         }
 
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to sign in");
+      const errorMessage = err instanceof Error ? err.message : "Failed to sign in";
+      
+      // Provide more specific error messages
+      if (errorMessage.includes("pending approval")) {
+        setError("Your account is awaiting approval. Please wait for an administrator to review your account.");
+      } else if (errorMessage.includes("rejected")) {
+        setError("Your account has been rejected. Please contact support if you believe this is an error.");
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

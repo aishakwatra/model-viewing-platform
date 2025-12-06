@@ -27,7 +27,22 @@ export async function signUp(userData: SignUpData, role: UserRole = "user") {
   try {
     const { email, password, fullName, photoUrl } = userData;
 
-    // Step 1: Create user in Supabase Auth
+    // Step 1: Check if email already exists in users table
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("is_approved")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existingUser) {
+      if (existingUser.is_approved) {
+        throw new Error("An account with this email already exists. Please sign in instead.");
+      } else {
+        throw new Error("Your account is pending approval. Please wait for an administrator to approve your account before signing in.");
+      }
+    }
+
+    // Step 2: Create user in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -38,7 +53,14 @@ export async function signUp(userData: SignUpData, role: UserRole = "user") {
       },
     });
 
-    if (authError) throw authError;
+    if (authError) {
+      // Check if it's because user already exists in auth (rejected user case)
+      if (authError.message.includes("already registered")) {
+        throw new Error("Your previous account was rejected by an administrator. Please contact support if you believe this is an error.");
+      }
+      throw authError;
+    }
+    
     if (!authData.user) throw new Error("Failed to create auth user");
 
     const authUserId = authData.user.id; // This is the UUID from auth.users
@@ -49,7 +71,7 @@ export async function signUp(userData: SignUpData, role: UserRole = "user") {
     // Get the role ID
     const roleId = ROLE_IDS[role];
 
-    // Step 2: Get the next user_id (since it's not auto-generated in your schema)
+    // Step 3: Get the next user_id (since it's not auto-generated in your schema)
     const { data: existingUsers } = await supabase
       .from("users")
       .select("user_id")
@@ -60,7 +82,7 @@ export async function signUp(userData: SignUpData, role: UserRole = "user") {
       ? existingUsers[0].user_id + 1 
       : 1;
 
-    // Step 3: Create user in custom SQL users table with auth_user_id
+    // Step 4: Create user in custom SQL users table with auth_user_id
     const { data: newUser, error: insertError } = await supabase
       .from("users")
       .insert({
@@ -96,12 +118,52 @@ export async function signUp(userData: SignUpData, role: UserRole = "user") {
 }
 
 /**
+ * Check user approval status by email
+ * Returns: 'approved', 'pending', 'rejected', or 'not_found'
+ */
+async function checkUserApprovalStatus(email: string): Promise<'approved' | 'pending' | 'rejected' | 'not_found'> {
+  try {
+    // Check if email exists in users table
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("is_approved, auth_user_id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error checking approval status:", error);
+      return 'not_found';
+    }
+
+    if (!user) {
+      // User not in users table - could be rejected or never registered
+      // We'll treat this as not found for simplicity
+      // The signUp function will handle the rejected case when they try to register again
+      return 'not_found';
+    }
+
+    // User exists in users table
+    return user.is_approved ? 'approved' : 'pending';
+  } catch (error) {
+    console.error("Error in checkUserApprovalStatus:", error);
+    return 'not_found';
+  }
+}
+
+/**
  * Sign in an existing user
  * Supports both Supabase Auth and legacy custom password hash
  */
 export async function signIn(email: string, password: string) {
   try {
-    // Step 1: Try Supabase Auth first
+    // Check user approval status first
+    const approvalStatus = await checkUserApprovalStatus(email);
+    
+    if (approvalStatus === 'pending') {
+      throw new Error("Your account is pending approval. Please wait for an administrator to approve your account before signing in.");
+    }
+    
+    // Try Supabase Auth first
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -133,12 +195,13 @@ export async function signIn(email: string, password: string) {
         .single();
 
       if (fetchError || !user) {
-        throw new Error("User profile not found");
+        // User exists in auth but not in users table = rejected
+        throw new Error("Your account has been rejected by an administrator. Please contact support if you believe this is an error.");
       }
 
-      // Check if user is approved
+      // Double-check if user is approved
       if (!user.is_approved) {
-        throw new Error("Your account is pending approval. Please wait for an administrator to approve your account.");
+        throw new Error("Your account is pending approval. Please wait for an administrator to approve your account before signing in.");
       }
 
       // Return user data with auth session
@@ -150,7 +213,7 @@ export async function signIn(email: string, password: string) {
       };
     }
 
-    // Step 2: Fallback to custom password verification (for legacy/admin users)
+    // Fallback to custom password verification (for legacy/admin users)
     console.log("Supabase Auth failed, trying custom password verification...");
     
     const { data: user, error: fetchError } = await supabase
@@ -186,7 +249,7 @@ export async function signIn(email: string, password: string) {
 
     // Check if user is approved
     if (!user.is_approved) {
-      throw new Error("Your account is pending approval. Please wait for an administrator to approve your account.");
+      throw new Error("Your account is pending approval. Please wait for an administrator to approve your account before signing in.");
     }
 
     // Remove password_hash from returned user object

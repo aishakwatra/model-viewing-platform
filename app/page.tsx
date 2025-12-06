@@ -1,7 +1,40 @@
 // app/page.tsx
-import Link from "next/link";
+"use client";
 
-export default async function Home() {
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/app/components/auth/AuthProvider";
+
+export default function Home() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        // Redirect to auth page if not logged in
+        router.push("/auth");
+      } else if (user.is_approved === false) {
+        // Redirect to auth page if not approved
+        router.push("/auth");
+      }
+    }
+  }, [user, loading, router]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  // If no user or not approved after loading, they'll be redirected by useEffect
+  if (!user || user.is_approved === false) {
+    return null;
+  }
 
   return (
     <main className="p-8">      

@@ -73,6 +73,14 @@ export async function approveUser(userId: number): Promise<void> {
 }
 
 export async function rejectUser(userId: number): Promise<void> {
+  // First, get the auth_user_id before deleting from users table
+  const { data: user } = await supabase
+    .from("users")
+    .select("auth_user_id")
+    .eq("user_id", userId)
+    .single();
+
+  // Delete from users table
   const { error } = await supabase
     .from("users")
     .delete()
@@ -81,6 +89,18 @@ export async function rejectUser(userId: number): Promise<void> {
   if (error) {
     console.error("Failed to reject user", error);
     throw error;
+  }
+
+  // Note: Deleting from auth.users requires admin privileges
+  // The auth user will remain but won't have access since they're not in the users table
+  // If you want to delete from auth, you'll need to use Supabase Admin API
+  if (user?.auth_user_id) {
+    try {
+      await supabase.auth.admin.deleteUser(user.auth_user_id);
+    } catch (authError) {
+      console.error("Failed to delete auth user (non-critical):", authError);
+      // Non-critical error - user is already removed from users table
+    }
   }
 }
 

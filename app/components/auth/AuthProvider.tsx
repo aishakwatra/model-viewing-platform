@@ -33,6 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check for existing user on mount
     const currentUser = getCurrentUser();
+    console.log("🔍 AuthProvider: Loaded user from localStorage:", currentUser);
+    console.log("🔍 AuthProvider: User approval status:", currentUser?.is_approved);
     setUser(currentUser);
     setLoading(false);
   }, []);

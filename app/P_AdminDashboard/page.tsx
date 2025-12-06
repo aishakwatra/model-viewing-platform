@@ -104,20 +104,6 @@ export default function AdminDashboard() {
     }
   }, [user, loading, logout, router]);
 
-  // Show loading state while checking authentication
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-beige">
-        <div className="text-brown">Loading...</div>
-      </div>
-    );
-  }
-
-  // Don't render if not authenticated or not admin
-  if (!user || user.user_role_id !== ROLE_IDS.admin) {
-    return null;
-  }
-
   const manageCategories = useCallback(
     async (
       action: ManageCategoryAction,
@@ -250,6 +236,27 @@ export default function AdminDashboard() {
     loadCategories();
     loadUsers();
   }, [loadCategories, loadUsers]);
+
+  const tabs = useMemo(() => [
+    { key: "requests", label: "Requests", icon: <RequestsIcon /> },
+    { key: "users", label: "Users", icon: <UsersIcon /> },
+    { key: "reports", label: "Reports", icon: <ReportsIcon /> },
+    { key: "categories", label: "Categories", icon: <CategoriesIcon /> },
+  ], []);
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-beige">
+        <div className="text-brown">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated or not admin
+  if (!user || user.user_role_id !== ROLE_IDS.admin) {
+    return null;
+  }
 
   const handleCreateCategory = async () => {
     // Check authentication
@@ -386,13 +393,6 @@ export default function AdminDashboard() {
       setCategoryActionTargetId(null);
     }
   };
-
-  const tabs = useMemo(() => [
-    { key: "requests", label: "Requests", icon: <RequestsIcon /> },
-    { key: "users", label: "Users", icon: <UsersIcon /> },
-    { key: "reports", label: "Reports", icon: <ReportsIcon /> },
-    { key: "categories", label: "Categories", icon: <CategoriesIcon /> },
-  ], []);
 
   const reportOptions = [
     {
