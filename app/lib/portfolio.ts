@@ -117,3 +117,111 @@ export async function removeModelFromPage(pageId: number, modelId: number) {
   if (error) throw error;
   return { success: true };
 }
+
+// Fetch all creators with their portfolio pages (with thumbnails)
+export async function fetchAllCreatorsWithPortfolios() {
+  // Fetch all portfolio pages with their creator information and first model
+  const { data: portfolioPages, error } = await supabase
+    .from("portfolio_pages")
+    .select(`
+      id,
+      portfolio_page_name,
+      creator_id,
+      users!portfolio_pages_creator_id_fkey (
+        user_id,
+        full_name,
+        email,
+        photo_url
+      ),
+      portfolio_page_models (
+        models (
+          model_versions (
+            thumbnail_url,
+            version
+          )
+        )
+      )
+    `)
+    .order("creator_id", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching portfolio pages:", error);
+    return [];
+  }
+
+  if (!portfolioPages || portfolioPages.length === 0) {
+    return [];
+  }
+
+  // Process pages to extract thumbnail from first model
+  const pagesWithThumbnails = portfolioPages.map((page: any) => {
+    let thumbnailUrl = "/sangeet-stage.png"; // Default thumbnail
+    
+    // Get first model from portfolio_page_models
+    if (page.portfolio_page_models && page.portfolio_page_models.length > 0) {
+      const firstModel = page.portfolio_page_models[0];
+      if (firstModel?.models?.model_versions) {
+        const versions = firstModel.models.model_versions;
+        // Get latest version (highest version number)
+        const sortedVersions = Array.isArray(versions) 
+          ? [...versions].sort((a: any, b: any) => b.version - a.version)
+          : [versions];
+        const latestVersion = sortedVersions[0];
+        if (latestVersion?.thumbnail_url) {
+          thumbnailUrl = latestVersion.thumbnail_url;
+        }
+      }
+    }
+
+    return {
+      id: page.id,
+      portfolio_page_name: page.portfolio_page_name,
+      creator_id: page.creator_id,
+      users: page.users,
+      thumbnailUrl
+    };
+  });
+
+  // Group portfolio pages by creator
+  const creatorsMap = new Map<number, {
+    id: number;
+    name: string;
+    email: string;
+    photo_url: string | null;
+    portfolioPages: Array<{
+      id: number;
+      portfolio_page_name: string;
+      creator_id: number;
+      thumbnailUrl: string;
+    }>;
+  }>();
+
+  pagesWithThumbnails.forEach((page: any) => {
+    const creator = page.users;
+    if (!creator) return;
+
+    const creatorId = creator.user_id;
+    
+    if (!creatorsMap.has(creatorId)) {
+      creatorsMap.set(creatorId, {
+        id: creatorId,
+        name: creator.full_name || creator.email,
+        email: creator.email,
+        photo_url: creator.photo_url,
+        portfolioPages: []
+      });
+    }
+
+    creatorsMap.get(creatorId)?.portfolioPages.push({
+      id: page.id,
+      portfolio_page_name: page.portfolio_page_name,
+      creator_id: page.creator_id,
+      thumbnailUrl: page.thumbnailUrl
+    });
+  });
+
+  // Convert map to array and sort by creator name
+  return Array.from(creatorsMap.values()).sort((a, b) => 
+    a.name.localeCompare(b.name)
+  );
+}

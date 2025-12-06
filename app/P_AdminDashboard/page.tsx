@@ -13,10 +13,13 @@ import {
   fetchUnapprovedUsers,
   approveUser,
   rejectUser,
+  fetchApprovedUsers,
+  type ApprovedUser,
 } from "@/app/lib/admin";
 import { ModelCategory, supabase } from "@/app/lib/supabase";
 import { generateAdminReport, downloadExcelFile } from "@/app/lib/reportGenerator";
 import { SecureAuthModal } from "@/app/components/auth/SecureAuthModal";
+import { UserProjectsModal } from "@/app/components/admin/UserProjectsModal";
 
 type ManageCategoryAction = "create" | "read" | "update" | "delete";
 
@@ -30,6 +33,7 @@ const RequestsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" he
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path></svg>;
 const ReportsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>;
 const CategoriesIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
+const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -60,10 +64,12 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [verifiedUser, setVerifiedUser] = useState<any>(null);
 
-  const users = [
-    { id: 1, name: "Sarah Johnson", email: "sarah.j@email.com", role: "Client", status: "Active", projects: 12, functions: 45, initials: "SJ" },
-    { id: 2, name: "Michael Chen", email: "m.chen@email.com", role: "Creator", status: "Active", projects: 8, functions: 32, initials: "MC" },
-  ];
+  // Users state
+  const [users, setUsers] = useState<ApprovedUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<ApprovedUser | null>(null);
+  const [showUserProjectsModal, setShowUserProjectsModal] = useState(false);
   const [categories, setCategories] = useState<ModelCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
@@ -123,9 +129,25 @@ export default function AdminDashboard() {
           if (!rawName) {
             throw new Error("Category name is required.");
           }
+          
+          // Get the maximum ID to generate the next one
+          const { data: maxIdResult, error: maxIdError } = await supabase
+            .from("model_categories")
+            .select("id")
+            .order("id", { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (maxIdError && maxIdError.code !== "PGRST116") {
+            // PGRST116 is "no rows returned" which is fine for empty table
+            throw maxIdError;
+          }
+          
+          const nextId = maxIdResult ? maxIdResult.id + 1 : 1;
+          
           const { data: createdCategory, error } = await supabase
             .from("model_categories")
-            .insert({ model_category: rawName })
+            .insert({ id: nextId, model_category: rawName })
             .select()
             .single();
           if (error) {
@@ -203,9 +225,31 @@ export default function AdminDashboard() {
     }
   }, [manageCategories, isAuthenticated]);
 
+  const loadUsers = useCallback(async () => {
+    // Only load if authenticated
+    if (!isAuthenticated) {
+      return;
+    }
+    
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      const approvedUsers = await fetchApprovedUsers();
+      setUsers(approvedUsers);
+    } catch (error) {
+      setUsersError(
+        error instanceof Error ? error.message : "Failed to load users."
+      );
+      setUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     loadCategories();
-  }, [loadCategories]);
+    loadUsers();
+  }, [loadCategories, loadUsers]);
 
   const handleCreateCategory = async () => {
     // Check authentication
@@ -307,6 +351,23 @@ export default function AdminDashboard() {
     setCategoryActionLoading(true);
     setCategoriesError(null);
     try {
+      // Check if any models are using this category
+      const { data: modelsUsingCategory, error: checkError } = await supabase
+        .from("models")
+        .select("id")
+        .eq("model_category_id", categoryToDelete.id)
+        .limit(1);
+
+      if (checkError) {
+        throw new Error("Failed to check category usage.");
+      }
+
+      if (modelsUsingCategory && modelsUsingCategory.length > 0) {
+        throw new Error(
+          `Cannot delete this category because there are models associated with it. Please reassign or delete those models first.`
+        );
+      }
+
       await manageCategories("delete", { id: categoryToDelete.id });
       setCategories((prev) =>
         prev.filter((category) => category.id !== categoryToDelete.id)
@@ -317,6 +378,8 @@ export default function AdminDashboard() {
       setCategoriesError(
         error instanceof Error ? error.message : "Failed to delete category."
       );
+      setDeleteModalOpen(false);
+      setCategoryToDelete(null);
     } finally {
       setCategoryActionLoading(false);
       setCategoryActionType(null);
@@ -408,8 +471,23 @@ export default function AdminDashboard() {
 
   const RoleBadge = ({ role }: { role: string }) => {
     const base = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
-    if (role.toLowerCase() === "creator") return <span className={base + " bg-blue-100 text-blue-700"}>Creator</span>;
-    return <span className={base + " bg-purple-100 text-purple-700"}>Client</span>;
+    const roleLower = role.toLowerCase();
+    if (roleLower === "creator") return <span className={base + " bg-blue-100 text-blue-700"}>Creator</span>;
+    if (roleLower === "client") return <span className={base + " bg-purple-100 text-purple-700"}>Client</span>;
+    if (roleLower === "admin") return <span className={base + " bg-gold text-brown"}>Admin</span>;
+    return <span className={base + " bg-gray-100 text-gray-700"}>{role}</span>;
+  };
+
+  const handleUserClick = (user: ApprovedUser) => {
+    setSelectedUser(user);
+    setShowUserProjectsModal(true);
+  };
+
+  const handleUserProjectsModalClose = () => {
+    setShowUserProjectsModal(false);
+    setSelectedUser(null);
+    // Reload users in case project counts changed
+    loadUsers();
   };
 
   const StatusBadge = ({ status }: { status: string }) => {
@@ -425,6 +503,13 @@ export default function AdminDashboard() {
         isOpen={showAuthModal}
         requiredRole="admin"
         onAuthSuccess={handleAuthSuccess}
+      />
+
+      {/* User Projects Management Modal */}
+      <UserProjectsModal
+        isOpen={showUserProjectsModal}
+        onClose={handleUserProjectsModalClose}
+        user={selectedUser}
       />
 
       <div className="border-b border-brown/10 bg-white shadow-sm sticky top-0 z-10">
@@ -481,24 +566,59 @@ export default function AdminDashboard() {
             )}
 
         {activeTab === "users" && (
-          <div className="grid gap-4">
-            {users.map((u) => (
-              <Card key={u.id} className="flex items-center justify-between gap-4 p-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-brown/10 text-sm font-semibold text-brown">{u.initials}</div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-brown">{u.name}</h3>
-                    <p className="text-xs text-brown/70">{u.email}</p>
-                    <div className="mt-2 flex items-center gap-2"><RoleBadge role={u.role} /><StatusBadge status={u.status} /></div>
-                  </div>
-                </div>
-                {/* --- CHANGE IS HERE --- */}
-                <div className="text-left mr-4">
-                    <p className="text-sm text-brown">Projects: <span className="font-semibold">{u.projects}</span></p>
-                    <p className="text-sm text-brown">Functions: <span className="font-semibold">{u.functions}</span></p>
-                </div>
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-brown">All Users</h2>
+            {usersError && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+                {usersError}
+              </div>
+            )}
+            {usersLoading ? (
+              <Card className="p-4 text-center text-sm text-brown/70">
+                Loading users...
               </Card>
-            ))}
+            ) : users.length === 0 ? (
+              <Card className="p-4 text-center text-sm text-brown/70">
+                No users found.
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {users.map((u) => {
+                  const initials = u.full_name
+                    ? u.full_name.split(" ").map(n => n[0]).join("").toUpperCase()
+                    : u.email[0].toUpperCase();
+                  const roleName = u.user_roles?.role || "User";
+                  
+                  return (
+                    <Card 
+                      key={u.user_id} 
+                      className="flex items-center justify-between gap-4 p-4 cursor-pointer hover:bg-brown/5 transition-colors"
+                      onClick={() => handleUserClick(u)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex size-12 items-center justify-center rounded-full bg-brown/10 text-sm font-semibold text-brown">
+                          {initials}
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-brown">{u.full_name || "No name"}</h3>
+                          <p className="text-xs text-brown/70">{u.email}</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <RoleBadge role={roleName} />
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
+                              Active
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right mr-4">
+                        <p className="text-xs text-brown/60">User ID: {u.user_id}</p>
+                        <p className="text-xs text-brown/60">Click to manage projects</p>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -540,17 +660,22 @@ export default function AdminDashboard() {
                 placeholder="Add new category..."
                 value={newCategoryName}
                 onChange={(event) => setNewCategoryName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && newCategoryName.trim() && !categoryActionLoading) {
+                    handleCreateCategory();
+                  }
+                }}
                 className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
                 disabled={categoryActionLoading && categoryActionType === "create"}
               />
               <Button
                 variant="brown"
-                className="gap-2"
+                className="gap-2 whitespace-nowrap"
                 onClick={handleCreateCategory}
                 disabled={categoryActionLoading || !newCategoryName.trim()}
               >
-                <UsersIcon />
-                {categoryActionLoading && categoryActionType === "create" ? "Adding..." : "Add Category"}
+                <PlusIcon />
+                {categoryActionLoading && categoryActionType === "create" ? "Adding..." : "Add"}
               </Button>
             </div>
             {categoriesError && (
@@ -580,14 +705,18 @@ export default function AdminDashboard() {
                             type="text"
                             value={editingCategoryName}
                             onChange={(event) => setEditingCategoryName(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" && editingCategoryName.trim() && !categoryActionLoading) {
+                                handleUpdateCategory();
+                              } else if (event.key === "Escape") {
+                                handleCancelEditingCategory();
+                              }
+                            }}
                             className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
                             disabled={isProcessing}
                           />
                         ) : (
                           <h3 className="text-sm font-semibold text-brown">{category.model_category}</h3>
-                        )}
-                        {!isEditing && (
-                          <p className="mt-1 text-xs text-brown/60">Category ID: {category.id}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2">

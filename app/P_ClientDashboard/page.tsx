@@ -9,6 +9,7 @@ import { ClientFunctionCard } from "@/app/components/client/ClientFunctionCard";
 import { FavouritesCarousel } from "@/app/components/client/FavouritesCarousel";
 import { fetchUserProjects, fetchUserFavourites, fetchProjectModels } from "@/app/lib/clientData";
 import { getCurrentUser } from "@/app/lib/auth";
+import { fetchAllCreatorsWithPortfolios } from "@/app/lib/portfolio";
 
 interface ProjectData {
   id: number;
@@ -54,8 +55,21 @@ interface FavouriteData {
   };
 }
 
+interface CreatorWithPortfolios {
+  id: number;
+  name: string;
+  email: string;
+  photo_url: string | null;
+  portfolioPages: Array<{
+    id: number;
+    portfolio_page_name: string;
+    creator_id: number;
+    thumbnailUrl: string;
+  }>;
+}
+
 export default function ClientDashboard() {
-  const [activeTab, setActiveTab] = useState("projects");
+  const [activeTab, setActiveTab] = useState("home");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -64,11 +78,14 @@ export default function ClientDashboard() {
   const [projectModels, setProjectModels] = useState<Record<number, ModelData[]>>({});
   const [openProjects, setOpenProjects] = useState<number[]>([]);
   const [openFavouriteId, setOpenFavouriteId] = useState<number | null>(null);
+  const [creators, setCreators] = useState<CreatorWithPortfolios[]>([]);
+  const [openCreators, setOpenCreators] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const tabs = useMemo(
     () => [
+      { key: "home", label: "Home", icon: <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
       { key: "projects", label: "Projects", icon: <PortfolioIcon /> },
       { key: "favourites", label: "Favourites", icon: <FavouriteIcon /> },
     ],
@@ -97,6 +114,13 @@ export default function ClientDashboard() {
     try {
       setLoading(true);
       setError(null);
+
+      // Load creators with portfolios (available to all users)
+      const creatorsData = await fetchAllCreatorsWithPortfolios();
+      console.log(`✅ Loaded ${creatorsData.length} creators with portfolios`);
+      setCreators(creatorsData);
+      // Auto-expand all creators on Home tab
+      setOpenCreators(creatorsData.map(c => c.id));
 
       // Get authenticated user
       const user = getCurrentUser();
@@ -232,6 +256,14 @@ setFavourites(favouritesData as any as FavouriteData[]);
     setOpenFavouriteId(prevId => (prevId === id ? null : id));
   };
 
+  const toggleCreator = (id: number) => {
+    setOpenCreators(prev =>
+      prev.includes(id)
+        ? prev.filter(creatorId => creatorId !== id)
+        : [...prev, id]
+    );
+  };
+
   return (
     <div className="min-h-screen bg-beige">
       <div className="border-b border-brown/10 bg-white shadow-sm sticky top-0 z-10">
@@ -312,34 +344,139 @@ setFavourites(favouritesData as any as FavouriteData[]);
               Retry
             </Button>
           </Card>
-        ) : !currentUserId ? (
-          <Card className="p-8 text-center space-y-4">
-            <div className="text-brown/70">
-              <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto mb-4 size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              <p className="text-lg font-medium text-brown">Log in to see your projects</p>
-              <p className="mt-2 text-sm">Access assigned projects, favourites, and personalized resources once you are signed in.</p>
-            </div>
-            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-              <Link
-                href="/auth?mode=login"
-                className="inline-flex items-center gap-2 rounded-xl border border-brown/20 bg-white px-4 py-2 text-sm font-medium text-brown transition hover:bg-brown/5"
-              >
-                Log In
-              </Link>
-              <Link
-                href="/auth?mode=signup"
-                className="inline-flex items-center gap-2 rounded-xl border border-brown/10 bg-gold/90 px-4 py-2 text-sm font-semibold text-brown transition hover:bg-gold"
-              >
-                Sign Up
-              </Link>
-            </div>
-          </Card>
         ) : (
           <>
-            {activeTab === "projects" && (
+            {activeTab === "home" && (
+              <div className="space-y-4">
+                {creators.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <div className="text-brown/70">No portfolio pages available</div>
+                  </Card>
+                ) : (
+                  <div className="space-y-8">
+                    {creators.map((creator) => {
+                      const isOpen = openCreators.includes(creator.id);
+
+                      return (
+                        <div key={creator.id} className="space-y-4">
+                          {/* Creator Header */}
+                          <button 
+                            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                            onClick={() => toggleCreator(creator.id)}
+                          >
+                            {creator.photo_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img 
+                                src={creator.photo_url} 
+                                alt={creator.name}
+                                className="size-12 rounded-full object-cover border-2 border-gold/30"
+                              />
+                            ) : (
+                              <div className="size-12 rounded-full bg-gold/20 flex items-center justify-center">
+                                <span className="text-brown font-semibold text-lg">
+                                  {creator.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                            <div className="text-left">
+                              <h2 className="text-xl font-semibold text-brown">{creator.name}</h2>
+                              <p className="text-sm text-brown/70">
+                                {creator.portfolioPages.length} portfolio {creator.portfolioPages.length === 1 ? 'page' : 'pages'}
+                              </p>
+                            </div>
+                            <ChevronDownIcon isOpen={isOpen} />
+                          </button>
+
+                          {/* Portfolio Grid */}
+                          {isOpen && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                              {creator.portfolioPages.map((page) => (
+                                <a
+                                  key={page.id}
+                                  href={`/portfolio/${page.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group block"
+                                >
+                                  <Card className="overflow-hidden transition-all hover:shadow-xl hover:scale-[1.02] hover:border-gold">
+                                    {/* Thumbnail */}
+                                    <div className="aspect-video relative bg-brown/5 overflow-hidden">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={page.thumbnailUrl}
+                                        alt={page.portfolio_page_name}
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                      />
+                                      {/* Overlay on hover */}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-brown/80 via-brown/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+                                        <div className="flex items-center gap-2 text-white text-sm font-medium">
+                                          <span>View Portfolio</span>
+                                          <svg 
+                                            xmlns="http://www.w3.org/2000/svg" 
+                                            className="size-4" 
+                                            viewBox="0 0 24 24" 
+                                            fill="none" 
+                                            stroke="currentColor" 
+                                            strokeWidth="2"
+                                          >
+                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                            <polyline points="15 3 21 3 21 9"/>
+                                            <line x1="10" y1="14" x2="21" y2="3"/>
+                                          </svg>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Card Content */}
+                                    <div className="p-4">
+                                      <h3 className="font-semibold text-brown group-hover:text-gold transition-colors line-clamp-1">
+                                        {page.portfolio_page_name}
+                                      </h3>
+                                      <p className="text-xs text-brown/60 mt-1">
+                                        by {creator.name}
+                                      </p>
+                                    </div>
+                                  </Card>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!currentUserId && activeTab !== "home" ? (
+              <Card className="p-8 text-center space-y-4">
+                <div className="text-brown/70">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto mb-4 size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  <p className="text-lg font-medium text-brown">Log in to see your {activeTab}</p>
+                  <p className="mt-2 text-sm">Access assigned projects, favourites, and personalized resources once you are signed in.</p>
+                </div>
+                <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                  <Link
+                    href="/auth?mode=login"
+                    className="inline-flex items-center gap-2 rounded-xl border border-brown/20 bg-white px-4 py-2 text-sm font-medium text-brown transition hover:bg-brown/5"
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    href="/auth?mode=signup"
+                    className="inline-flex items-center gap-2 rounded-xl border border-brown/10 bg-gold/90 px-4 py-2 text-sm font-semibold text-brown transition hover:bg-gold"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              </Card>
+            ) : null}
+
+            {currentUserId && activeTab === "projects" && (
               <div className="space-y-4">
                 <Card className="p-4 space-y-4">
                   <div className="relative flex items-center">
@@ -419,7 +556,7 @@ setFavourites(favouritesData as any as FavouriteData[]);
               </div>
             )}
 
-            {activeTab === "favourites" && (
+            {currentUserId && activeTab === "favourites" && (
               <div className="space-y-4">
                 {groupedFavourites.length === 0 ? (
                   <Card className="p-8 text-center">
