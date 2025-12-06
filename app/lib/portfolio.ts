@@ -120,7 +120,7 @@ export async function removeModelFromPage(pageId: number, modelId: number) {
 
 // Fetch all creators with their portfolio pages (with thumbnails)
 export async function fetchAllCreatorsWithPortfolios() {
-  // Fetch all portfolio pages with their creator information
+  // Fetch all portfolio pages with their creator information and first model
   const { data: portfolioPages, error } = await supabase
     .from("portfolio_pages")
     .select(`
@@ -132,6 +132,14 @@ export async function fetchAllCreatorsWithPortfolios() {
         full_name,
         email,
         photo_url
+      ),
+      portfolio_page_models (
+        models (
+          model_versions (
+            thumbnail_url,
+            version
+          )
+        )
       )
     `)
     .order("creator_id", { ascending: true });
@@ -145,44 +153,34 @@ export async function fetchAllCreatorsWithPortfolios() {
     return [];
   }
 
-  // For each portfolio page, fetch the first model's thumbnail as cover
-  const pagesWithThumbnails = await Promise.all(
-    portfolioPages.map(async (page: any) => {
-      // Get the first model from this portfolio page
-      const { data: pageModels } = await supabase
-        .from("portfolio_page_models")
-        .select(`
-          models (
-            model_versions (
-              thumbnail_url,
-              version
-            )
-          )
-        `)
-        .eq("portfolio_page_id", page.id)
-        .limit(1)
-        .single();
-
-      let thumbnailUrl = "/sangeet-stage.png"; // Default thumbnail
-      
-      if (pageModels?.models?.model_versions) {
-        const versions = pageModels.models.model_versions;
-        // Sort by version descending to get latest
+  // Process pages to extract thumbnail from first model
+  const pagesWithThumbnails = portfolioPages.map((page: any) => {
+    let thumbnailUrl = "/sangeet-stage.png"; // Default thumbnail
+    
+    // Get first model from portfolio_page_models
+    if (page.portfolio_page_models && page.portfolio_page_models.length > 0) {
+      const firstModel = page.portfolio_page_models[0];
+      if (firstModel?.models?.model_versions) {
+        const versions = firstModel.models.model_versions;
+        // Get latest version (highest version number)
         const sortedVersions = Array.isArray(versions) 
-          ? versions.sort((a: any, b: any) => b.version - a.version)
+          ? [...versions].sort((a: any, b: any) => b.version - a.version)
           : [versions];
         const latestVersion = sortedVersions[0];
         if (latestVersion?.thumbnail_url) {
           thumbnailUrl = latestVersion.thumbnail_url;
         }
       }
+    }
 
-      return {
-        ...page,
-        thumbnailUrl
-      };
-    })
-  );
+    return {
+      id: page.id,
+      portfolio_page_name: page.portfolio_page_name,
+      creator_id: page.creator_id,
+      users: page.users,
+      thumbnailUrl
+    };
+  });
 
   // Group portfolio pages by creator
   const creatorsMap = new Map<number, {
