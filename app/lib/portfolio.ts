@@ -118,7 +118,7 @@ export async function removeModelFromPage(pageId: number, modelId: number) {
   return { success: true };
 }
 
-// Fetch all creators with their portfolio pages
+// Fetch all creators with their portfolio pages (with thumbnails)
 export async function fetchAllCreatorsWithPortfolios() {
   // Fetch all portfolio pages with their creator information
   const { data: portfolioPages, error } = await supabase
@@ -145,6 +145,45 @@ export async function fetchAllCreatorsWithPortfolios() {
     return [];
   }
 
+  // For each portfolio page, fetch the first model's thumbnail as cover
+  const pagesWithThumbnails = await Promise.all(
+    portfolioPages.map(async (page: any) => {
+      // Get the first model from this portfolio page
+      const { data: pageModels } = await supabase
+        .from("portfolio_page_models")
+        .select(`
+          models (
+            model_versions (
+              thumbnail_url,
+              version
+            )
+          )
+        `)
+        .eq("portfolio_page_id", page.id)
+        .limit(1)
+        .single();
+
+      let thumbnailUrl = "/sangeet-stage.png"; // Default thumbnail
+      
+      if (pageModels?.models?.model_versions) {
+        const versions = pageModels.models.model_versions;
+        // Sort by version descending to get latest
+        const sortedVersions = Array.isArray(versions) 
+          ? versions.sort((a: any, b: any) => b.version - a.version)
+          : [versions];
+        const latestVersion = sortedVersions[0];
+        if (latestVersion?.thumbnail_url) {
+          thumbnailUrl = latestVersion.thumbnail_url;
+        }
+      }
+
+      return {
+        ...page,
+        thumbnailUrl
+      };
+    })
+  );
+
   // Group portfolio pages by creator
   const creatorsMap = new Map<number, {
     id: number;
@@ -155,10 +194,11 @@ export async function fetchAllCreatorsWithPortfolios() {
       id: number;
       portfolio_page_name: string;
       creator_id: number;
+      thumbnailUrl: string;
     }>;
   }>();
 
-  portfolioPages.forEach((page: any) => {
+  pagesWithThumbnails.forEach((page: any) => {
     const creator = page.users;
     if (!creator) return;
 
@@ -177,7 +217,8 @@ export async function fetchAllCreatorsWithPortfolios() {
     creatorsMap.get(creatorId)?.portfolioPages.push({
       id: page.id,
       portfolio_page_name: page.portfolio_page_name,
-      creator_id: page.creator_id
+      creator_id: page.creator_id,
+      thumbnailUrl: page.thumbnailUrl
     });
   });
 

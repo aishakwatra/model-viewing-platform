@@ -66,6 +66,7 @@ interface CreatorWithPortfolios {
     id: number;
     portfolio_page_name: string;
     creator_id: number;
+    thumbnailUrl: string;
   }>;
 }
 
@@ -356,84 +357,95 @@ setFavourites(favouritesData as any as FavouriteData[]);
                     <div className="text-brown/70">No portfolio pages available</div>
                   </Card>
                 ) : (
-                  <div className="grid gap-4">
+                  <div className="space-y-8">
                     {creators.map((creator) => {
                       const isOpen = openCreators.includes(creator.id);
 
                       return (
-                        <Card key={creator.id} className="p-0 overflow-hidden">
-                          <button className="w-full text-left p-4" onClick={() => toggleCreator(creator.id)}>
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="flex items-center gap-3">
-                                {creator.photo_url ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img 
-                                    src={creator.photo_url} 
-                                    alt={creator.name}
-                                    className="size-10 rounded-full object-cover border-2 border-gold/30"
-                                  />
-                                ) : (
-                                  <div className="size-10 rounded-full bg-gold/20 flex items-center justify-center">
-                                    <span className="text-brown font-semibold text-sm">
-                                      {creator.name.charAt(0).toUpperCase()}
-                                    </span>
-                                  </div>
-                                )}
-                                <div>
-                                  <h2 className="text-lg font-semibold text-brown">{creator.name}</h2>
-                                  <p className="mt-1 text-xs text-brown/70">
-                                    {creator.portfolioPages.length} portfolio {creator.portfolioPages.length === 1 ? 'page' : 'pages'}
-                                  </p>
-                                </div>
+                        <div key={creator.id} className="space-y-4">
+                          {/* Creator Header */}
+                          <button 
+                            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                            onClick={() => toggleCreator(creator.id)}
+                          >
+                            {creator.photo_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img 
+                                src={creator.photo_url} 
+                                alt={creator.name}
+                                className="size-12 rounded-full object-cover border-2 border-gold/30"
+                              />
+                            ) : (
+                              <div className="size-12 rounded-full bg-gold/20 flex items-center justify-center">
+                                <span className="text-brown font-semibold text-lg">
+                                  {creator.name.charAt(0).toUpperCase()}
+                                </span>
                               </div>
-                              <ChevronDownIcon isOpen={isOpen} />
+                            )}
+                            <div className="text-left">
+                              <h2 className="text-xl font-semibold text-brown">{creator.name}</h2>
+                              <p className="text-sm text-brown/70">
+                                {creator.portfolioPages.length} portfolio {creator.portfolioPages.length === 1 ? 'page' : 'pages'}
+                              </p>
                             </div>
+                            <ChevronDownIcon isOpen={isOpen} />
                           </button>
+
+                          {/* Portfolio Grid */}
                           {isOpen && (
-                            <div className="p-4 border-t border-brown/10 bg-brown/5">
-                              <div className="space-y-2">
-                                {creator.portfolioPages.map((page) => (
-                                  <a
-                                    key={page.id}
-                                    href={`/portfolio/${page.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-brown/10 hover:border-gold hover:shadow-md transition-all group"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <svg 
-                                        xmlns="http://www.w3.org/2000/svg" 
-                                        className="size-5 text-brown/60" 
-                                        viewBox="0 0 24 24" 
-                                        fill="none" 
-                                        stroke="currentColor" 
-                                        strokeWidth="2"
-                                      >
-                                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                                      </svg>
-                                      <span className="font-medium text-brown group-hover:text-gold transition-colors">
-                                        {page.portfolio_page_name}
-                                      </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                              {creator.portfolioPages.map((page) => (
+                                <a
+                                  key={page.id}
+                                  href={`/portfolio/${page.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group block"
+                                >
+                                  <Card className="overflow-hidden transition-all hover:shadow-xl hover:scale-[1.02] hover:border-gold">
+                                    {/* Thumbnail */}
+                                    <div className="aspect-video relative bg-brown/5 overflow-hidden">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={page.thumbnailUrl}
+                                        alt={page.portfolio_page_name}
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                      />
+                                      {/* Overlay on hover */}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-brown/80 via-brown/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
+                                        <div className="flex items-center gap-2 text-white text-sm font-medium">
+                                          <span>View Portfolio</span>
+                                          <svg 
+                                            xmlns="http://www.w3.org/2000/svg" 
+                                            className="size-4" 
+                                            viewBox="0 0 24 24" 
+                                            fill="none" 
+                                            stroke="currentColor" 
+                                            strokeWidth="2"
+                                          >
+                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                            <polyline points="15 3 21 3 21 9"/>
+                                            <line x1="10" y1="14" x2="21" y2="3"/>
+                                          </svg>
+                                        </div>
+                                      </div>
                                     </div>
-                                    <svg 
-                                      xmlns="http://www.w3.org/2000/svg" 
-                                      className="size-4 text-brown/40 group-hover:text-gold transition-colors" 
-                                      viewBox="0 0 24 24" 
-                                      fill="none" 
-                                      stroke="currentColor" 
-                                      strokeWidth="2"
-                                    >
-                                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                      <polyline points="15 3 21 3 21 9"/>
-                                      <line x1="10" y1="14" x2="21" y2="3"/>
-                                    </svg>
-                                  </a>
-                                ))}
-                              </div>
+                                    
+                                    {/* Card Content */}
+                                    <div className="p-4">
+                                      <h3 className="font-semibold text-brown group-hover:text-gold transition-colors line-clamp-1">
+                                        {page.portfolio_page_name}
+                                      </h3>
+                                      <p className="text-xs text-brown/60 mt-1">
+                                        by {creator.name}
+                                      </p>
+                                    </div>
+                                  </Card>
+                                </a>
+                              ))}
                             </div>
                           )}
-                        </Card>
+                        </div>
                       );
                     })}
                   </div>
