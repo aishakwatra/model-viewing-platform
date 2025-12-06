@@ -1,4 +1,3 @@
-// app/P_ClientDashboard/page.tsx
 "use client";
 import Link from "next/link";
 import { useMemo, useState, useEffect } from "react";
@@ -8,7 +7,6 @@ import { ProfileIcon } from "@/app/components/ui/Icons";
 import { ChevronDownIcon, PortfolioIcon, FavouriteIcon } from "@/app/components/ui/Icons";
 import { ClientFunctionCard } from "@/app/components/client/ClientFunctionCard";
 import { FavouritesCarousel } from "@/app/components/client/FavouritesCarousel";
-// import { UserSelector } from "@/app/components/UserSelector"; // No longer needed
 import { fetchUserProjects, fetchUserFavourites, fetchProjectModels } from "@/app/lib/clientData";
 import { getCurrentUser } from "@/app/lib/auth";
 
@@ -82,6 +80,19 @@ export default function ClientDashboard() {
     initializeDashboard();
   }, []);
 
+
+  useEffect(() => {
+    if (projects.length > 0) {
+      // Open all accordions
+      setOpenProjects(projects.map(p => p.id));
+      
+      // Trigger data fetch for all projects so the content isn't empty
+      projects.forEach(p => {
+        loadProjectModels(p.id);
+      });
+    }
+  }, [projects]);
+
   async function initializeDashboard() {
     try {
       setLoading(true);
@@ -151,21 +162,6 @@ setFavourites(favouritesData as any as FavouriteData[]);
       day: "numeric",
       year: "numeric",
     });
-  }
-
-  function timeAgo(dateString: string) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-    if (diffInDays === 0) return "Today";
-    if (diffInDays === 1) return "1 day ago";
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    if (diffInDays < 14) return "1 week ago";
-    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
-    if (diffInDays < 60) return "1 month ago";
-    return `${Math.floor(diffInDays / 30)} months ago`;
   }
 
   const groupedFavourites = useMemo(() => {

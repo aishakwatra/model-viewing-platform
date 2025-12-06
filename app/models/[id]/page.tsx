@@ -79,6 +79,23 @@ export default function ModelViewerPage() {
   }, []);
 
 
+  const getUserRole = (user: any) => {
+    if (!user || !user.user_roles) return "";
+    // Handle array (Supabase join) or object
+    if (Array.isArray(user.user_roles) && user.user_roles.length > 0) {
+        return user.user_roles[0].role;
+    }
+    if (typeof user.user_roles === 'object') {
+        return user.user_roles.role;
+    }
+    return "";
+  };
+
+
+  const userRole = getUserRole(currentUser);
+  const isCreator = userRole?.toLowerCase() === "creator";
+  const dashboardHref = isCreator ? "/creator/dashboard" : "/P_ClientDashboard";
+
   async function loadData(id: number) {
     try {
       setLoading(true);
@@ -331,7 +348,7 @@ export default function ModelViewerPage() {
           <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-6 md:px-8">
             <Breadcrumbs
               items={[
-                { href: "/creator/dashboard", label: "Dashboard" },
+                { href: dashboardHref, label: "Dashboard" },
                 { label: model.projects?.project_name || "Project" },
                 { label: model.model_name },
               ]}
@@ -358,10 +375,12 @@ export default function ModelViewerPage() {
                   <span className="text-sm text-brown/60">No versions</span>
                 )}
               </div>
-              <button className="flex items-center gap-2 text-sm text-brown/70 hover:text-brown">
-                <FavouriteIcon />
-                Favourite
-              </button>
+              {!isCreator && (
+                <button className="flex items-center gap-2 text-sm text-brown/70 hover:text-brown">
+                  <FavouriteIcon />
+                  Favourite
+                </button>
+              )}
             </div>
           </div>
         </div>
