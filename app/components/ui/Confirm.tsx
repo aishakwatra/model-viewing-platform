@@ -9,6 +9,7 @@ interface ModalProps {
   onConfirm?: () => void;
   title: string;
   children: React.ReactNode;
+  size?: "small" | "medium" | "large";
 }
 
 export function Modal({
@@ -19,12 +20,19 @@ export function Modal({
   children,
   onConfirmLabel = "Confirm Change",
   onCancelLabel = "Cancel",
+  size = "medium",
 }: ModalProps) {
   if (!isOpen) return null;
 
+  const sizeClasses = {
+    small: "max-w-sm",
+    medium: "max-w-md",
+    large: "max-w-2xl",
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <Card className="w-full max-w-md p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <Card className={`w-full ${sizeClasses[size]} p-6 max-h-[90vh] overflow-y-auto`}>
         <h2 className="text-lg font-semibold text-brown">{title}</h2>
         <div className="mt-2 text-sm text-brown/80">{children}</div>
         <div className="mt-6 flex justify-end gap-3">

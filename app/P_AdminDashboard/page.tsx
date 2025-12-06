@@ -13,10 +13,13 @@ import {
   fetchUnapprovedUsers,
   approveUser,
   rejectUser,
+  fetchApprovedUsers,
+  type ApprovedUser,
 } from "@/app/lib/admin";
 import { ModelCategory, supabase } from "@/app/lib/supabase";
 import { generateAdminReport, downloadExcelFile } from "@/app/lib/reportGenerator";
 import { SecureAuthModal } from "@/app/components/auth/SecureAuthModal";
+import { UserProjectsModal } from "@/app/components/admin/UserProjectsModal";
 
 type ManageCategoryAction = "create" | "read" | "update" | "delete";
 
@@ -60,10 +63,12 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [verifiedUser, setVerifiedUser] = useState<any>(null);
 
-  const users = [
-    { id: 1, name: "Sarah Johnson", email: "sarah.j@email.com", role: "Client", status: "Active", projects: 12, functions: 45, initials: "SJ" },
-    { id: 2, name: "Michael Chen", email: "m.chen@email.com", role: "Creator", status: "Active", projects: 8, functions: 32, initials: "MC" },
-  ];
+  // Users state
+  const [users, setUsers] = useState<ApprovedUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<ApprovedUser | null>(null);
+  const [showUserProjectsModal, setShowUserProjectsModal] = useState(false);
   const [categories, setCategories] = useState<ModelCategory[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
@@ -203,9 +208,31 @@ export default function AdminDashboard() {
     }
   }, [manageCategories, isAuthenticated]);
 
+  const loadUsers = useCallback(async () => {
+    // Only load if authenticated
+    if (!isAuthenticated) {
+      return;
+    }
+    
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      const approvedUsers = await fetchApprovedUsers();
+      setUsers(approvedUsers);
+    } catch (error) {
+      setUsersError(
+        error instanceof Error ? error.message : "Failed to load users."
+      );
+      setUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     loadCategories();
-  }, [loadCategories]);
+    loadUsers();
+  }, [loadCategories, loadUsers]);
 
   const handleCreateCategory = async () => {
     // Check authentication
@@ -408,8 +435,23 @@ export default function AdminDashboard() {
 
   const RoleBadge = ({ role }: { role: string }) => {
     const base = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
-    if (role.toLowerCase() === "creator") return <span className={base + " bg-blue-100 text-blue-700"}>Creator</span>;
-    return <span className={base + " bg-purple-100 text-purple-700"}>Client</span>;
+    const roleLower = role.toLowerCase();
+    if (roleLower === "creator") return <span className={base + " bg-blue-100 text-blue-700"}>Creator</span>;
+    if (roleLower === "client") return <span className={base + " bg-purple-100 text-purple-700"}>Client</span>;
+    if (roleLower === "admin") return <span className={base + " bg-gold text-brown"}>Admin</span>;
+    return <span className={base + " bg-gray-100 text-gray-700"}>{role}</span>;
+  };
+
+  const handleUserClick = (user: ApprovedUser) => {
+    setSelectedUser(user);
+    setShowUserProjectsModal(true);
+  };
+
+  const handleUserProjectsModalClose = () => {
+    setShowUserProjectsModal(false);
+    setSelectedUser(null);
+    // Reload users in case project counts changed
+    loadUsers();
   };
 
   const StatusBadge = ({ status }: { status: string }) => {
@@ -425,6 +467,13 @@ export default function AdminDashboard() {
         isOpen={showAuthModal}
         requiredRole="admin"
         onAuthSuccess={handleAuthSuccess}
+      />
+
+      {/* User Projects Management Modal */}
+      <UserProjectsModal
+        isOpen={showUserProjectsModal}
+        onClose={handleUserProjectsModalClose}
+        user={selectedUser}
       />
 
       <div className="border-b border-brown/10 bg-white shadow-sm sticky top-0 z-10">
@@ -481,24 +530,59 @@ export default function AdminDashboard() {
             )}
 
         {activeTab === "users" && (
-          <div className="grid gap-4">
-            {users.map((u) => (
-              <Card key={u.id} className="flex items-center justify-between gap-4 p-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-brown/10 text-sm font-semibold text-brown">{u.initials}</div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-brown">{u.name}</h3>
-                    <p className="text-xs text-brown/70">{u.email}</p>
-                    <div className="mt-2 flex items-center gap-2"><RoleBadge role={u.role} /><StatusBadge status={u.status} /></div>
-                  </div>
-                </div>
-                {/* --- CHANGE IS HERE --- */}
-                <div className="text-left mr-4">
-                    <p className="text-sm text-brown">Projects: <span className="font-semibold">{u.projects}</span></p>
-                    <p className="text-sm text-brown">Functions: <span className="font-semibold">{u.functions}</span></p>
-                </div>
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-brown">All Users</h2>
+            {usersError && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+                {usersError}
+              </div>
+            )}
+            {usersLoading ? (
+              <Card className="p-4 text-center text-sm text-brown/70">
+                Loading users...
               </Card>
-            ))}
+            ) : users.length === 0 ? (
+              <Card className="p-4 text-center text-sm text-brown/70">
+                No users found.
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {users.map((u) => {
+                  const initials = u.full_name
+                    ? u.full_name.split(" ").map(n => n[0]).join("").toUpperCase()
+                    : u.email[0].toUpperCase();
+                  const roleName = u.user_roles?.role || "User";
+                  
+                  return (
+                    <Card 
+                      key={u.user_id} 
+                      className="flex items-center justify-between gap-4 p-4 cursor-pointer hover:bg-brown/5 transition-colors"
+                      onClick={() => handleUserClick(u)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex size-12 items-center justify-center rounded-full bg-brown/10 text-sm font-semibold text-brown">
+                          {initials}
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-brown">{u.full_name || "No name"}</h3>
+                          <p className="text-xs text-brown/70">{u.email}</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <RoleBadge role={roleName} />
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
+                              Active
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right mr-4">
+                        <p className="text-xs text-brown/60">User ID: {u.user_id}</p>
+                        <p className="text-xs text-brown/60">Click to manage projects</p>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
