@@ -8,7 +8,8 @@ import { Button } from "@/app/components/ui/Button";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { ModelViewer } from "@/app/components/ModelViewer";
 import { FavouriteIcon } from "@/app/components/ui/Icons";
-
+import { getCurrentUser } from "@/app/lib/auth";
+import { Modal } from "@/app/components/ui/Confirm";
 
 import { CommentList } from "@/app/components/model/CommentList";
 import { CommentForm } from "@/app/components/model/CommentForm";
@@ -19,7 +20,8 @@ import {
   fetchComments, 
   ModelDetail, 
   ModelVersion,
-  Comment       
+  Comment ,
+  deleteComment      
 } from "@/app/lib/modelData";
 
 export default function ModelViewerPage() {
@@ -37,22 +39,27 @@ export default function ModelViewerPage() {
   const [activeVersion, setActiveVersion] = useState<ModelVersion | null>(null);
   const [comments, setComments] = useState<Comment[]>([]); // <--- New Comments State
   const [loadingComments, setLoadingComments] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [isDeleteCommentModalOpen, setDeleteCommentModalOpen] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
+  const [isDeletingComment, setIsDeletingComment] = useState(false);
 
   // UI State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [downloadingImage, setDownloadingImage] = useState(false);
 
-  // 1. Load Data on Mount
+  // Load Data on Mount
   useEffect(() => {
     if (modelId) {
       loadData(Number(modelId));
     }
   }, [modelId]);
 
-  // 2. Handle URL Version Changes
+  // Handle URL Version Changes
   useEffect(() => {
     if (versions.length > 0) {
         selectVersionBasedOnUrl();
@@ -65,7 +72,13 @@ export default function ModelViewerPage() {
     }
   }, [activeVersion]);
 
-  // --- DATA FETCHING (Refactored) ---
+  
+  useEffect(() => {
+    const user = getCurrentUser();
+    setCurrentUser(user);
+  }, []);
+
+
   async function loadData(id: number) {
     try {
       setLoading(true);
@@ -93,7 +106,7 @@ export default function ModelViewerPage() {
 
   // --- VERSION LOGIC ---
   function selectVersionBasedOnUrl() {
-      // Default to latest (first in list because of desc order)
+      // Default to latest
       let targetVersion = versions[0];
 
       // If URL has specific version, try to find it
@@ -110,7 +123,6 @@ export default function ModelViewerPage() {
     if (path.startsWith("http")) {
       setModelUrl(path);
     } else {
-      // Assuming 'Models' bucket for 3D files based on your setup
       const { data } = supabase.storage.from("Models").getPublicUrl(path);
       setModelUrl(data.publicUrl);
     }
@@ -177,6 +189,35 @@ export default function ModelViewerPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedImage, handleNavigateImage]);
 
+
+  const handleDeleteClick = (commentId: number) => {
+    setCommentToDelete(commentId);
+    setDeleteCommentModalOpen(true);
+  };
+
+  const confirmDeleteComment = async () => {
+    if (!commentToDelete) return;
+
+    setIsDeletingComment(true);
+    try {
+        const result = await deleteComment(commentToDelete);
+        if (result.success) {
+            // Refresh comments list
+            if (activeVersion) {
+                loadVersionComments(activeVersion.id);
+            }
+            setDeleteCommentModalOpen(false);
+            setCommentToDelete(null);
+        } else {
+            alert("Failed to delete comment");
+        }
+    } catch (err) {
+        console.error(err);
+    } finally {
+        setIsDeletingComment(false);
+    }
+  };
+
   // --- RENDER ---
 
   if (loading) {
@@ -198,7 +239,26 @@ export default function ModelViewerPage() {
 
   return (
     <>
-      {/* 1. IMAGE EXPANSION MODAL */}
+
+    <Modal 
+        isOpen={isDeleteCommentModalOpen} 
+        onClose={() => setDeleteCommentModalOpen(false)}
+        title="Delete Comment"
+        onConfirm={confirmDeleteComment}
+        onConfirmLabel={isDeletingComment ? "Deleting..." : "Delete"}
+        onCancelLabel="Cancel"
+      >
+        <div className="space-y-2">
+            <p className="text-brown/80">
+                Are you sure you want to delete this comment?
+            </p>
+            <p className="text-xs text-brown/60">
+                This action cannot be undone.
+            </p>
+        </div>
+      </Modal>
+
+      {/* IMAGE EXPANSION MODAL */}
       {selectedImage && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
@@ -327,10 +387,15 @@ export default function ModelViewerPage() {
                   <span className="text-xs text-white/60 font-normal">{comments.length} total</span>
                </div>
                
-               {/* 1. Comment List */}
-               <CommentList comments={comments} loading={loadingComments} />
+               {/* Comment List */}
+               <CommentList 
+                  comments={comments} 
+                  loading={loadingComments}
+                  currentUserId={currentUser?.user_id || null} // Pass User ID
+                  onDelete={handleDeleteClick} // Pass Handler
+               />
                
-               {/* 2. Comment Form */}
+               {/* Comment Form */}
                {activeVersion && (
                  <CommentForm 
                     versionId={activeVersion.id} 

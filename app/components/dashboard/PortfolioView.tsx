@@ -6,14 +6,16 @@ import { PortfolioModelCard } from "@/app/components/portfolio/PortfolioModelCar
 import { Button } from "@/app/components/ui/Button";
 import { Card } from "@/app/components/ui/Card";
 import { Project } from "@/app/lib/types";
-import { Modal } from "@/app/components/ui/Confirm"; // 1. Import Modal
+import { Modal } from "@/app/components/ui/Confirm"; 
+import { TrashIcon } from "@/app/components/ui/Icons";
 
 interface PortfolioViewProps {
   pageId: number;
   allProjects: Project[];
+  onDeletePage: () => void;
 }
 
-export function PortfolioView({ pageId, allProjects }: PortfolioViewProps) {
+export function PortfolioView({ pageId, allProjects, onDeletePage }: PortfolioViewProps) {
   const [models, setModels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddMode, setAddMode] = useState(false);
@@ -22,6 +24,8 @@ export function PortfolioView({ pageId, allProjects }: PortfolioViewProps) {
   const [modelToRemove, setModelToRemove] = useState<string | null>(null);
   const [isRemoveModalOpen, setRemoveModalOpen] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+
+  const [isDeletePageModalOpen, setDeletePageModalOpen] = useState(false);
 
   // Load models for this page
   useEffect(() => {
@@ -90,12 +94,52 @@ export function PortfolioView({ pageId, allProjects }: PortfolioViewProps) {
         </div>
       </Modal>
 
+      <Modal 
+        isOpen={isDeletePageModalOpen} 
+        onClose={() => setDeletePageModalOpen(false)}
+        title="Delete Portfolio Page"
+        onConfirm={() => {
+            setDeletePageModalOpen(false);
+            onDeletePage(); 
+        }}
+        onConfirmLabel="Yes, Delete Page"
+        onCancelLabel="Cancel"
+      >
+        <div className="space-y-3">
+            <div className="rounded-lg bg-red-50 p-3 border border-red-100">
+                <p className="text-sm font-semibold text-red-800 mb-1">
+                    ⚠️ Permanent Action
+                </p>
+                <p className="text-sm text-red-700">
+                    Are you sure you want to delete this entire page?
+                </p>
+            </div>
+            <p className="text-xs text-brown/60">
+                This will delete the page layout. The models themselves will NOT be deleted from the database.
+            </p>
+        </div>
+      </Modal>
+
       <div className="space-y-6">
+        {/* 2. UPDATED HEADER SECTION WITH DELETE BUTTON */}
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-brown">Page Content</h2>
-          <Button variant="gold" onClick={() => setAddMode(!isAddMode)}>
-              {isAddMode ? "Done Adding" : "+ Add Models"}
-          </Button>
+          
+          <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                className="text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300 h-9 text-xs gap-2"
+                onClick={() => setDeletePageModalOpen(true)}
+              >
+                  <TrashIcon /> Delete Page
+              </Button>
+              
+              <div className="h-6 w-px bg-brown/10 mx-1"></div>
+
+              <Button variant="gold" onClick={() => setAddMode(!isAddMode)}>
+                  {isAddMode ? "Done Adding" : "+ Add Models"}
+              </Button>
+          </div>
         </div>
 
         {isAddMode && (

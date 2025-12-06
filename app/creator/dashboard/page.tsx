@@ -14,7 +14,7 @@ import {
 } from "@/app/lib/creatorData";
 
 // 1. IMPORT PORTFOLIO FUNCTIONS
-import { fetchPortfolioPages, PortfolioPage } from "@/app/lib/portfolio";
+import { fetchPortfolioPages, PortfolioPage, deletePortfolioPage } from "@/app/lib/portfolio";
 
 import { Project, Model } from "@/app/lib/types";
 import { Modal } from "@/app/components/ui/Confirm";
@@ -175,6 +175,25 @@ export default function CreatorDashboardPage() {
     setIsDeleting(false);
   };
 
+  const handleDeletePage = async (pageId: number) => {
+    try {
+      setLoading(true);
+      // A. Delete from DB
+      await deletePortfolioPage(pageId);
+      
+      // B. Update Local State (Remove from tabs)
+      setPortfolioPages(prev => prev.filter(p => p.id !== pageId));
+      
+      // C. Switch View back to Home
+      setActiveView('home');
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete page");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const confirmModelDelete = async () => {
     if (!modelToDelete) return;
     setIsModelDeleting(true);
@@ -330,10 +349,11 @@ export default function CreatorDashboardPage() {
             </>
           ) : (
              
-             <PortfolioView 
-                pageId={parseInt(activeView)} 
-                allProjects={projects} 
-             />
+            <PortfolioView 
+              pageId={parseInt(activeView)} 
+              allProjects={projects}
+              onDeletePage={() => handleDeletePage(parseInt(activeView))} 
+            />
           )}
         </div>
       </div>
