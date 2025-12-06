@@ -33,6 +33,7 @@ const RequestsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" he
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path></svg>;
 const ReportsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>;
 const CategoriesIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
+const PlusIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -128,9 +129,25 @@ export default function AdminDashboard() {
           if (!rawName) {
             throw new Error("Category name is required.");
           }
+          
+          // Get the maximum ID to generate the next one
+          const { data: maxIdResult, error: maxIdError } = await supabase
+            .from("model_categories")
+            .select("id")
+            .order("id", { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (maxIdError && maxIdError.code !== "PGRST116") {
+            // PGRST116 is "no rows returned" which is fine for empty table
+            throw maxIdError;
+          }
+          
+          const nextId = maxIdResult ? maxIdResult.id + 1 : 1;
+          
           const { data: createdCategory, error } = await supabase
             .from("model_categories")
-            .insert({ model_category: rawName })
+            .insert({ id: nextId, model_category: rawName })
             .select()
             .single();
           if (error) {
@@ -334,6 +351,23 @@ export default function AdminDashboard() {
     setCategoryActionLoading(true);
     setCategoriesError(null);
     try {
+      // Check if any models are using this category
+      const { data: modelsUsingCategory, error: checkError } = await supabase
+        .from("models")
+        .select("id")
+        .eq("model_category_id", categoryToDelete.id)
+        .limit(1);
+
+      if (checkError) {
+        throw new Error("Failed to check category usage.");
+      }
+
+      if (modelsUsingCategory && modelsUsingCategory.length > 0) {
+        throw new Error(
+          `Cannot delete this category because there are models associated with it. Please reassign or delete those models first.`
+        );
+      }
+
       await manageCategories("delete", { id: categoryToDelete.id });
       setCategories((prev) =>
         prev.filter((category) => category.id !== categoryToDelete.id)
@@ -344,6 +378,8 @@ export default function AdminDashboard() {
       setCategoriesError(
         error instanceof Error ? error.message : "Failed to delete category."
       );
+      setDeleteModalOpen(false);
+      setCategoryToDelete(null);
     } finally {
       setCategoryActionLoading(false);
       setCategoryActionType(null);
@@ -624,17 +660,22 @@ export default function AdminDashboard() {
                 placeholder="Add new category..."
                 value={newCategoryName}
                 onChange={(event) => setNewCategoryName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && newCategoryName.trim() && !categoryActionLoading) {
+                    handleCreateCategory();
+                  }
+                }}
                 className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
                 disabled={categoryActionLoading && categoryActionType === "create"}
               />
               <Button
                 variant="brown"
-                className="gap-2"
+                className="gap-2 whitespace-nowrap"
                 onClick={handleCreateCategory}
                 disabled={categoryActionLoading || !newCategoryName.trim()}
               >
-                <UsersIcon />
-                {categoryActionLoading && categoryActionType === "create" ? "Adding..." : "Add Category"}
+                <PlusIcon />
+                {categoryActionLoading && categoryActionType === "create" ? "Adding..." : "Add"}
               </Button>
             </div>
             {categoriesError && (
@@ -664,14 +705,18 @@ export default function AdminDashboard() {
                             type="text"
                             value={editingCategoryName}
                             onChange={(event) => setEditingCategoryName(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" && editingCategoryName.trim() && !categoryActionLoading) {
+                                handleUpdateCategory();
+                              } else if (event.key === "Escape") {
+                                handleCancelEditingCategory();
+                              }
+                            }}
                             className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
                             disabled={isProcessing}
                           />
                         ) : (
                           <h3 className="text-sm font-semibold text-brown">{category.model_category}</h3>
-                        )}
-                        {!isEditing && (
-                          <p className="mt-1 text-xs text-brown/60">Category ID: {category.id}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2">

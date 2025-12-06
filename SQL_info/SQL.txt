@@ -9,8 +9,8 @@ CREATE TABLE public.comments (
   user_id integer NOT NULL,
   auth_user_id uuid,
   CONSTRAINT comments_pkey PRIMARY KEY (id),
-  CONSTRAINT comments_model_version_id_fkey FOREIGN KEY (model_version_id) REFERENCES public.model_versions(id),
-  CONSTRAINT comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id)
+  CONSTRAINT comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id),
+  CONSTRAINT comments_model_version_id_fkey FOREIGN KEY (model_version_id) REFERENCES public.model_versions(id)
 );
 CREATE TABLE public.model_categories (
   id integer NOT NULL,
@@ -32,8 +32,8 @@ CREATE TABLE public.model_logs (
   user_id integer NOT NULL,
   auth_user_id uuid,
   CONSTRAINT model_logs_pkey PRIMARY KEY (id),
-  CONSTRAINT model_logs_model_id_fkey FOREIGN KEY (model_id) REFERENCES public.models(id),
-  CONSTRAINT model_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id)
+  CONSTRAINT model_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id),
+  CONSTRAINT model_logs_model_id_fkey FOREIGN KEY (model_id) REFERENCES public.models(id)
 );
 CREATE TABLE public.model_status (
   id integer NOT NULL,
@@ -47,6 +47,7 @@ CREATE TABLE public.model_versions (
   obj_file_path character varying NOT NULL,
   can_download boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  thumbnail_url text NOT NULL DEFAULT ''::text,
   CONSTRAINT model_versions_pkey PRIMARY KEY (id),
   CONSTRAINT model_versions_model_id_fkey FOREIGN KEY (model_id) REFERENCES public.models(id)
 );
@@ -58,17 +59,17 @@ CREATE TABLE public.models (
   created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
   status_id integer,
   CONSTRAINT models_pkey PRIMARY KEY (id),
-  CONSTRAINT models_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id),
+  CONSTRAINT models_status_id_fkey FOREIGN KEY (status_id) REFERENCES public.model_status(id),
   CONSTRAINT models_model_category_id_fkey FOREIGN KEY (model_category_id) REFERENCES public.model_categories(id),
-  CONSTRAINT models_status_id_fkey FOREIGN KEY (status_id) REFERENCES public.model_status(id)
+  CONSTRAINT models_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id)
 );
 CREATE TABLE public.portfolio_page_models (
   id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   portfolio_page_id integer NOT NULL,
   model_id integer NOT NULL,
   CONSTRAINT portfolio_page_models_pkey PRIMARY KEY (id),
-  CONSTRAINT portfolio_page_models_portfolio_page_id_fkey FOREIGN KEY (portfolio_page_id) REFERENCES public.portfolio_pages(id),
-  CONSTRAINT portfolio_page_models_model_id_fkey FOREIGN KEY (model_id) REFERENCES public.models(id)
+  CONSTRAINT portfolio_page_models_model_id_fkey FOREIGN KEY (model_id) REFERENCES public.models(id),
+  CONSTRAINT portfolio_page_models_portfolio_page_id_fkey FOREIGN KEY (portfolio_page_id) REFERENCES public.portfolio_pages(id)
 );
 CREATE TABLE public.portfolio_pages (
   id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -83,8 +84,8 @@ CREATE TABLE public.project_clients (
   project_id integer NOT NULL,
   user_id integer NOT NULL,
   CONSTRAINT project_clients_pkey PRIMARY KEY (id),
-  CONSTRAINT project_clients_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id),
-  CONSTRAINT project_clients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id)
+  CONSTRAINT project_clients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id),
+  CONSTRAINT project_clients_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id)
 );
 CREATE TABLE public.project_status (
   id integer NOT NULL,
