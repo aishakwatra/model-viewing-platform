@@ -129,7 +129,8 @@ export default function PortfolioPageView() {
                   category: model.category,
                   version: model.version,
                   imageUrl: model.thumbnailUrl
-                }} 
+                }}
+                customHref={`/portfolio/${pageId}/${model.id}`}
               />
             ))}
           </div>

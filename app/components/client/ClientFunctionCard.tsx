@@ -1,4 +1,3 @@
-
 import { Button } from "@/app/components/ui/Button";
 import Link from "next/link";
 import Image from "next/image";
@@ -11,11 +10,21 @@ interface ClientFunction {
   imageUrl: string;
 }
 
-export function ClientFunctionCard({ func }: { func: ClientFunction }) {
+// Update props to accept an optional customHref
+interface ClientFunctionCardProps {
+  func: ClientFunction;
+  customHref?: string; 
+}
+
+export function ClientFunctionCard({ func, customHref }: ClientFunctionCardProps) {
+  // Use the custom link if provided, otherwise default to the standard model viewer
+  const targetLink = customHref || `/models/${func.id}?version=${func.version}`;
+
   return (
     <div className="rounded-2xl border border-pink-200 bg-white p-4">
       <div className="flex flex-col items-start gap-3">
         <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-brown/5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <Image
             src={func.imageUrl || "/sangeet-stage.png"} 
             alt={`Thumbnail of ${func.name}`}
@@ -30,9 +39,8 @@ export function ClientFunctionCard({ func }: { func: ClientFunction }) {
         </div>
       </div>
       
-      {/* UPDATED LINK */}
       <Link 
-        href={`/models/${func.id}?version=${func.version}`} 
+        href={targetLink} 
         className="mt-4 block"
       >
         <Button variant="brown" className="w-full">
