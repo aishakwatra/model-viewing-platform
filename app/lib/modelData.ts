@@ -10,7 +10,7 @@ export interface Comment {
   user: {
     full_name: string;
     photo_url: string | null;
-    role: string; // <--- NEW: Added role field
+    role: string; 
   };
 }
 
@@ -29,6 +29,7 @@ export interface ModelVersion {
   version: number;
   obj_file_path: string;
   thumbnail_url: string; 
+  can_download: boolean;
   created_at: string;
   model_images: {
     id: number;

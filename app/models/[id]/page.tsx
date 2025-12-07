@@ -13,6 +13,7 @@ import { Modal } from "@/app/components/ui/Confirm";
 
 import { CommentList } from "@/app/components/model/CommentList";
 import { CommentForm } from "@/app/components/model/CommentForm";
+import { toggleFavourite, fetchUserFavourites } from "@/app/lib/clientData";
 
 import { 
   fetchModelDetails, 
@@ -48,9 +49,13 @@ export default function ModelViewerPage() {
   const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
   const [isDeletingComment, setIsDeletingComment] = useState(false);
 
-  // UI State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [downloadingImage, setDownloadingImage] = useState(false);
+
+  const [isFavourited, setIsFavourited] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+
+  const [isZipping, setIsZipping] = useState(false);
 
   // Load Data on Mount
   useEffect(() => {
@@ -77,6 +82,47 @@ export default function ModelViewerPage() {
     const user = getCurrentUser();
     setCurrentUser(user);
   }, []);
+
+  useEffect(() => {
+    async function checkFavouriteStatus() {
+      if (!currentUser || !activeVersion) {
+        setIsFavourited(false);
+        return;
+      }
+      
+      try {
+        // Fetch all favourites for this user to see if this version is included
+        const favourites = await fetchUserFavourites(currentUser.user_id);
+        const isFav = favourites.some((f: any) => f.model_version_id === activeVersion.id);
+        setIsFavourited(isFav);
+      } catch (err) {
+        console.error("Error checking favourites:", err);
+      }
+    }
+    
+    checkFavouriteStatus();
+  }, [currentUser, activeVersion]);
+
+  const handleToggleFav = async () => {
+    if (!currentUser) return alert("Please log in to favourite models.");
+    if (!activeVersion) return;
+    
+    const prevState = isFavourited;
+    setIsFavourited(!prevState);
+    setFavLoading(true);
+
+    try {
+        const result = await toggleFavourite(currentUser.user_id, activeVersion.id);
+        // Ensure state matches server result (result.action is 'added' or 'removed')
+        setIsFavourited(result.action === 'added');
+    } catch (err) {
+        // Revert on error
+        setIsFavourited(prevState);
+        alert("Failed to update favourite");
+    } finally {
+        setFavLoading(false);
+    }
+  };
 
 
   const getUserRole = (user: any) => {
@@ -235,6 +281,34 @@ export default function ModelViewerPage() {
     }
   };
 
+  const handleDownloadZip = () => {
+    // 1. Basic Checks
+    if (!modelUrl || !activeVersion || !model) return;
+    
+    // Prevent multiple clicks if already processing
+    if (isZipping) return;
+
+    // Set Loading State
+    setIsZipping(true);
+    
+    // Construct API URL
+    const apiUrl = `/api/download-zip?url=${encodeURIComponent(modelUrl)}&name=${encodeURIComponent(model.model_name + '-v' + activeVersion.version)}`;
+    
+    // Trigger Browser Download
+    const link = document.createElement('a');
+    link.href = apiUrl;
+    link.setAttribute('download', `${model.model_name}-v${activeVersion.version}.zip`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Reset state after a delay 
+    //prevents double-clicking while the browser prepares the stream.
+    setTimeout(() => {
+        setIsZipping(false);
+    }, 3000);
+  };
+
   // --- RENDER ---
 
   if (loading) {
@@ -376,9 +450,18 @@ export default function ModelViewerPage() {
                 )}
               </div>
               {!isCreator && (
-                <button className="flex items-center gap-2 text-sm text-brown/70 hover:text-brown">
-                  <FavouriteIcon />
-                  Favourite
+                <button 
+                  onClick={handleToggleFav}
+                  disabled={favLoading}
+                  className={`flex items-center gap-2 text-sm transition-colors ${
+                    isFavourited 
+                        ? "text-gold hover:text-gold/80" 
+                        : "text-brown/40 hover:text-brown"
+                  }`}
+                  title={isFavourited ? "Remove from favourites" : "Add to favourites"}
+                >
+                  <FavouriteIcon filled={isFavourited} />
+                  {isFavourited ? "Favourited" : "Favourite"}
                 </button>
               )}
             </div>
@@ -477,11 +560,36 @@ export default function ModelViewerPage() {
 
                   {/* 3D File Download */}
                   <div className="pt-2">
-                     <a href={modelUrl || "#"} download target="_blank">
-                        <Button variant="brown" className="w-full" disabled={!modelUrl}>
-                          Download 3D File
+                     {activeVersion?.can_download ? (
+                        <Button 
+                          variant="brown" 
+                          className="w-full transition-all duration-200" 
+                          // Disable button while "zipping" 
+                          disabled={!modelUrl || isZipping}
+                          onClick={handleDownloadZip}
+                        >
+                          
+                          {isZipping ? (
+                            <span className="flex items-center gap-2">
+                              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Starting Download...
+                            </span>
+                          ) : (
+                            "Download 3D Files (ZIP)"
+                          )}
                         </Button>
-                     </a>
+                     ) : (
+                       <Button 
+                         variant="outline" 
+                         className="w-full cursor-not-allowed opacity-60 bg-gray-50 text-gray-500 border-gray-200" 
+                         disabled
+                       >
+                          Download Disabled
+                       </Button>
+                     )}
                   </div>
                 </div>
               </Card>
