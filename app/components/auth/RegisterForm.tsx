@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/app/components/ui/Button";
+import { Modal } from "@/app/components/ui/Confirm";
 import { signUp, uploadProfilePicture, saveCurrentUser, UserRole } from "@/app/lib/auth";
 
 interface RegisterFormProps {
@@ -18,12 +19,11 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
     setLoading(true);
 
     try {
@@ -58,30 +58,38 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       );
 
       if (result.success) {
-        setSuccess(result.message);
-
         // Save user to local storage
         saveCurrentUser(result.user);
+
+        // Show success modal
+        setShowSuccessModal(true);
 
         // If success callback provided, call it
         if (onSuccess) {
           onSuccess();
         }
-
-        // Redirect after short delay to show success message
-        setTimeout(() => {
-          if (role === "creator") {
-            router.push("/dashboard");
-          } else {
-            router.push("/P_ClientDashboard");
-          }
-        }, 1500);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create account");
+      const errorMessage = err instanceof Error ? err.message : "Failed to create account";
+      
+      // Provide more helpful error messages
+      if (errorMessage.includes("pending approval")) {
+        setError("Your account is awaiting approval. Please wait for an administrator to review your account before attempting to sign in.");
+      } else if (errorMessage.includes("rejected")) {
+        setError("Your previous account was rejected. Please contact support if you believe this is an error.");
+      } else if (errorMessage.includes("already exists")) {
+        setError("An account with this email already exists. Please sign in instead.");
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleModalClose() {
+    setShowSuccessModal(false);
+    router.push("/auth");
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -105,22 +113,17 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
   }
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold text-brown">Create account</h2>
-      <p className="text-sm text-brown/70 mt-1">Join our creative community</p>
+    <>
+      <div>
+        <h2 className="text-xl font-semibold text-brown">Create account</h2>
+        <p className="text-sm text-brown/70 mt-1">Join our creative community</p>
 
-      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-        {error && (
-          <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
-            {success}
-          </div>
-        )}
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          {error && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+              {error}
+            </div>
+          )}
 
         <div>
           <label htmlFor="full-name" className="block text-sm font-medium text-brown/80 mb-1">
@@ -233,39 +236,69 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-brown/80 mb-2">I am a</label>
-          <div className="flex items-center p-1 rounded-xl bg-brown/5 border border-brown/10">
-            <Button
-              type="button"
-              variant={role === "user" ? "gold" : "ghost"}
-              onClick={() => setRole("user")}
-              disabled={loading}
-              className="w-1/2"
-            >
-              User
-            </Button>
-            <Button
-              type="button"
-              variant={role === "creator" ? "gold" : "ghost"}
-              onClick={() => setRole("creator")}
-              disabled={loading}
-              className="w-1/2"
-            >
-              Creator
-            </Button>
+          <div>
+            <label className="block text-sm font-medium text-brown/80 mb-2">I am a</label>
+            <div className="flex items-center p-1 rounded-xl bg-brown/5 border border-brown/10">
+              <Button
+                type="button"
+                variant={role === "user" ? "gold" : "ghost"}
+                onClick={() => setRole("user")}
+                disabled={loading}
+                className="w-1/2"
+              >
+                User
+              </Button>
+              <Button
+                type="button"
+                variant={role === "creator" ? "gold" : "ghost"}
+                onClick={() => setRole("creator")}
+                disabled={loading}
+                className="w-1/2"
+              >
+                Creator
+              </Button>
+            </div>
           </div>
-          {role === "creator" && (
-            <p className="mt-2 text-xs text-brown/60">
-              Creator accounts may require approval before full access is granted.
-            </p>
-          )}
-        </div>
 
-        <Button variant="brown" className="w-full !mt-6" type="submit" disabled={loading}>
-          {loading ? "Creating Account..." : "Create Account"}
-        </Button>
-      </form>
-    </div>
+          <Button variant="brown" className="w-full !mt-6" type="submit" disabled={loading}>
+            {loading ? "Creating Account..." : "Create Account"}
+          </Button>
+        </form>
+      </div>
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={showSuccessModal}
+        onClose={handleModalClose}
+        title="Account Created Successfully!"
+        onCancelLabel="OK"
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-center">
+            <div className="rounded-full bg-green-100 p-3">
+              <svg
+                className="w-8 h-8 text-green-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+          </div>
+          <p className="text-center text-brown/90">
+            Your account has been created successfully!
+          </p>
+          <p className="text-center text-sm text-brown/70">
+            Please wait for an administrator to approve your account before you can sign in.
+          </p>
+        </div>
+      </Modal>
+    </>
   );
 }

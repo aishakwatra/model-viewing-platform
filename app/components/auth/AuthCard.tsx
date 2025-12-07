@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Card } from '@/app/components/ui/Card';
-import { Button } from '@/app/components/ui/Button';
 import { LoginForm } from '././LoginForm';
 import { RegisterForm } from '././RegisterForm';
 
@@ -11,26 +10,38 @@ export function AuthCard() {
 
   return (
     <Card className="w-full max-w-md p-8">
-      {/* Tab Buttons */}
-      <div className="flex items-center justify-center p-1 rounded-xl bg-brown/5 border border-brown/10 mb-6">
-        <Button 
-          variant={view === 'signin' ? 'brown' : 'ghost'} 
-          onClick={() => setView('signin')}
-          className="w-1/2"
-        >
-          Sign In
-        </Button>
-        <Button 
-          variant={view === 'register' ? 'brown' : 'ghost'} 
-          onClick={() => setView('register')}
-          className="w-1/2"
-        >
-          Register
-        </Button>
-      </div>
-
       {/* Conditional Form Rendering */}
-      {view === 'signin' ? <LoginForm /> : <RegisterForm />}
+      {view === 'signin' ? (
+        <>
+          <LoginForm />
+          <div className="mt-6 text-center">
+            <p className="text-sm text-brown/70">
+              Don't have an account?{' '}
+              <button
+                onClick={() => setView('register')}
+                className="font-medium text-brown hover:underline focus:outline-none"
+              >
+                Signup here
+              </button>
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          <RegisterForm />
+          <div className="mt-6 text-center">
+            <p className="text-sm text-brown/70">
+              Already have an account?{' '}
+              <button
+                onClick={() => setView('signin')}
+                className="font-medium text-brown hover:underline focus:outline-none"
+              >
+                Sign in here
+              </button>
+            </p>
+          </div>
+        </>
+      )}
     </Card>
   );
 }

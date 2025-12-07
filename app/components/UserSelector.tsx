@@ -6,11 +6,11 @@ import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 
 interface UserSelectorProps {
-  onUserSelect: (authUserId: string) => void;
-  currentAuthUserId: string | null;
+  onUserSelect: (userId: number) => void;
+  currentUserId: number | null;
 }
 
-export function UserSelector({ onUserSelect, currentAuthUserId }: UserSelectorProps) {
+export function UserSelector({ onUserSelect, currentUserId }: UserSelectorProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function UserSelector({ onUserSelect, currentAuthUserId }: UserSelectorPr
     }
   }
 
-  const currentUser = users.find((u) => u.auth_user_id === currentAuthUserId);
+  const currentUser = users.find((u) => u.user_id === currentUserId);
 
   return (
     <div className="relative">
@@ -83,14 +83,14 @@ export function UserSelector({ onUserSelect, currentAuthUserId }: UserSelectorPr
               <div className="space-y-1">
                 {users.map((user) => (
                   <button
-                    key={user.auth_user_id}
+                    key={user.user_id}
                     onClick={() => {
-                      onUserSelect(user.auth_user_id);
+                      onUserSelect(user.user_id);
                       setIsOpen(false);
                     }}
                     className={[
                       "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                      currentAuthUserId === user.auth_user_id
+                      currentUserId === user.user_id
                         ? "bg-brown text-white"
                         : "hover:bg-brown/10",
                     ].join(" ")}

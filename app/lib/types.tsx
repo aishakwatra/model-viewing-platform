@@ -9,7 +9,10 @@ export interface Model {
   status: string;
   thumbnailUrl: string;
   versions: string[];
+  versionThumbnails?: Record<string, string>;
+  versionIds?: Record<string, number>; 
 }
+
 
 export interface Project {
   id: string;
@@ -19,4 +22,5 @@ export interface Project {
   lastUpdated: string;
   status: string;
   models: Model[];
+  clientIds?: number[];
 }

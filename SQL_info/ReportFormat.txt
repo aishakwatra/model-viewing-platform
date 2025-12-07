@@ -1,0 +1,67 @@
+import ExcelJS from "exceljs";
+
+export async function generateAdminReport({ type, dateRange }) {
+  const workbook = new ExcelJS.Workbook();
+
+  // ------------------------------------------------------------
+  // METADATA SHEET
+  // ------------------------------------------------------------
+  const meta = workbook.addWorksheet("metadata");
+  meta.addRows([
+    ["report_type", type],
+    ["generated_at", new Date().toISOString()],
+    ["date_range_start", dateRange?.start || null],
+    ["date_range_end", dateRange?.end || null],
+  ]);
+
+  // ------------------------------------------------------------
+  // PROJECTS PER MODEL USER
+  // ------------------------------------------------------------
+  const perUser = workbook.addWorksheet("projects_per_user");
+  perUser.columns = [
+    { header: "user_id", key: "user_id", width: 25 },
+    { header: "username", key: "username", width: 25 },
+    { header: "project_id", key: "project_id", width: 25 },
+    { header: "project_name", key: "project_name", width: 35 },
+    { header: "created_at", key: "created_at", width: 25 },
+    { header: "status", key: "status", width: 15 },
+    { header: "project_count_total", key: "project_count_total", width: 20 },
+  ];
+
+  // Example row push
+  // perUser.addRow({ user_id: "...", username: "...", ... });
+
+  // ------------------------------------------------------------
+  // MOST FAVOURITED PROJECTS
+  // ------------------------------------------------------------
+  const favourites = workbook.addWorksheet("top_favourites");
+  favourites.columns = [
+    { header: "project_id", key: "project_id", width: 25 },
+    { header: "project_name", key: "project_name", width: 35 },
+    { header: "creator_id", key: "creator_id", width: 25 },
+    { header: "creator_username", key: "creator_username", width: 25 },
+    { header: "favourite_count", key: "favourite_count", width: 20 },
+    { header: "last_favourited_at", key: "last_favourited_at", width: 25 },
+  ];
+
+  // ------------------------------------------------------------
+  // ACTIVE CLIENTS
+  // ------------------------------------------------------------
+  const clients = workbook.addWorksheet("active_clients");
+  clients.columns = [
+    { header: "client_id", key: "client_id", width: 25 },
+    { header: "client_name", key: "client_name", width: 30 },
+    { header: "status", key: "status", width: 15 },
+    { header: "last_activity_at", key: "last_activity_at", width: 25 },
+    { header: "projects_assigned_count", key: "projects_assigned_count", width: 25 },
+  ];
+
+  // Summary cell example
+  clients.getCell("A1").note = "Total active clients goes here";
+
+  // ------------------------------------------------------------
+  // EXPORT FILE
+  // ------------------------------------------------------------
+  const buffer = await workbook.xlsx.writeBuffer();
+  return buffer;
+}

@@ -4,6 +4,7 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/app/components/ui/Button";
 import { signIn, saveCurrentUser } from "@/app/lib/auth";
+import { useAuth } from "@/app/components/auth/AuthProvider";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -11,6 +12,7 @@ interface LoginFormProps {
 
 export function LoginForm({ onSuccess }: LoginFormProps) {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -26,24 +28,69 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       const result = await signIn(email, password);
 
       if (result.success) {
+        console.log("✅ Sign in successful, user data:", result.user);
+        console.log("✅ User approval status:", result.user.is_approved);
+        
         // Save user to local storage
         saveCurrentUser(result.user);
+        
+        // Refresh the auth context to update the user state
+        refreshUser();
 
         // Show success message (optional)
         if (onSuccess) {
           onSuccess();
         }
 
-        // Redirect based on user role
-        const userRole = result.user.user_roles?.role;
-        if (userRole === "creator") {
-          router.push("/dashboard");
-        } else {
-          router.push("/P_ClientDashboard");
+        const roleId = result.user.user_role_id;
+
+        // 2. Get Role Name (String) - Handle Array vs Object response from Supabase
+        const roleData = result.user.user_roles;
+        let roleString = "";
+        
+        if (Array.isArray(roleData) && roleData.length > 0) {
+            roleString = roleData[0]?.role || "";
+        } else if (roleData && typeof roleData === 'object') {
+            // @ts-ignore
+            roleString = roleData.role || "";
         }
+
+        console.log(`🔍 Role Detected -> ID: ${roleId}, Name: "${roleString}"`);
+
+        // --- ROUTING LOGIC ---
+        // Use window.location instead of router.push to force a full page reload
+        // This ensures the auth context is fully updated before the new page loads
+        
+        // CREATOR
+        if (roleId === 1 || roleString === "CREATOR") {
+          console.log("➡️ Redirecting to Creator Dashboard");
+          window.location.href = "/creator/dashboard";
+        } 
+        // ADMIN
+        else if (roleId === 3 || roleString === "ADMIN") {
+          console.log("➡️ Redirecting to Admin Dashboard");
+          window.location.href = "/P_AdminDashboard";
+        } 
+        else if (roleId === 2 || roleString === "USER") {
+          console.log("➡️ Redirecting to Client Dashboard");
+          window.location.href = "/P_ClientDashboard";
+        } 
+        else {
+          window.location.href = "/auth";
+        }
+
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to sign in");
+      const errorMessage = err instanceof Error ? err.message : "Failed to sign in";
+      
+      // Provide more specific error messages
+      if (errorMessage.includes("pending approval")) {
+        setError("Your account is awaiting approval. Please wait for an administrator to review your account.");
+      } else if (errorMessage.includes("rejected")) {
+        setError("Your account has been rejected. Please contact support if you believe this is an error.");
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
