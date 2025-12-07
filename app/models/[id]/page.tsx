@@ -142,6 +142,14 @@ export default function ModelViewerPage() {
   const isCreator = userRole?.toLowerCase() === "creator";
   const dashboardHref = isCreator ? "/creator/dashboard" : "/P_ClientDashboard";
 
+  let pageBackgroundColor = "bg-beige"; 
+  
+  if (isCreator) {
+      pageBackgroundColor = "bg-beige"; 
+  } else {
+      pageBackgroundColor = "bg-white"; 
+  }
+
   async function loadData(id: number) {
     try {
       setLoading(true);
@@ -313,7 +321,7 @@ export default function ModelViewerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-beige flex items-center justify-center text-brown animate-pulse">
+      <div className={`min-h-screen ${pageBackgroundColor} flex items-center justify-center text-brown animate-pulse`}>
         Loading Model...
       </div>
     );
@@ -321,7 +329,7 @@ export default function ModelViewerPage() {
 
   if (!model) {
     return (
-      <div className="min-h-screen bg-beige flex flex-col items-center justify-center gap-4">
+      <div className={`min-h-screen ${pageBackgroundColor} flex flex-col items-center justify-center gap-4`}>
         <div className="text-brown">Model not found.</div>
         <Button onClick={() => router.back()}>Go Back</Button>
       </div>
@@ -416,7 +424,7 @@ export default function ModelViewerPage() {
       )}
 
       {/* MAIN PAGE CONTENT */}
-      <div className="bg-beige min-h-screen pb-12">
+      <div className={`${pageBackgroundColor} min-h-screen pb-12 transition-colors duration-300`}>
         {/* Top Bar */}
         <div className="border-b border-brown/10 bg-white shadow-sm sticky top-0 z-10">
           <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-6 md:px-8">
