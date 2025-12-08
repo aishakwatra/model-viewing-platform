@@ -57,7 +57,15 @@ export async function fetchUnapprovedUsers(): Promise<PendingApprovalUser[]> {
     throw error;
   }
 
-  return (data || []) as PendingApprovalUser[];
+  // Map the data to handle the user_roles array -> object conversion
+  const formattedData = (data || []).map((user: any) => ({
+    ...user,
+    user_roles: Array.isArray(user.user_roles) && user.user_roles.length > 0 
+      ? user.user_roles[0] 
+      : user.user_roles
+  }));
+
+  return formattedData as PendingApprovalUser[];
 }
 
 export async function approveUser(userId: number): Promise<void> {
@@ -116,7 +124,15 @@ export async function fetchApprovedUsers(): Promise<ApprovedUser[]> {
     throw error;
   }
 
-  return (data || []) as ApprovedUser[];
+  // Map the data to handle the user_roles array -> object conversion
+  const formattedData = (data || []).map((user: any) => ({
+    ...user,
+    user_roles: Array.isArray(user.user_roles) && user.user_roles.length > 0
+      ? user.user_roles[0]
+      : user.user_roles
+  }));
+
+  return formattedData as ApprovedUser[];
 }
 
 export async function fetchAllProjects(): Promise<Project[]> {
@@ -138,7 +154,20 @@ export async function fetchAllProjects(): Promise<Project[]> {
     throw error;
   }
 
-  return (data || []) as Project[];
+  // We might need to handle array conversions for relations here too if they come back as arrays
+  // But based on the interface, project_status and creator are objects.
+  // Supabase usually returns arrays for 1:N but explicitly mapped 1:1 might need check.
+  // Generally select(`..., foreign(field)`) returns an object if it's a belongs-to relationship 
+  // but let's be safe with a map if needed. For now, assuming standard response matches.
+  
+  // Actually, let's play it safe and map these too just in case.
+  const formattedData = (data || []).map((proj: any) => ({
+    ...proj,
+    project_status: Array.isArray(proj.project_status) ? proj.project_status[0] : proj.project_status,
+    creator: Array.isArray(proj.creator) ? proj.creator[0] : proj.creator
+  }));
+
+  return formattedData as Project[];
 }
 
 export async function fetchUserProjects(userId: number): Promise<UserProject[]> {
@@ -170,11 +199,15 @@ export async function fetchUserProjects(userId: number): Promise<UserProject[]> 
       project_name: p.project_name,
       relationship: "creator" as const,
     })),
-    ...(clientProjects || []).map((pc: any) => ({
-      project_id: pc.projects.id,
-      project_name: pc.projects.project_name,
-      relationship: "client" as const,
-    })),
+    ...(clientProjects || []).map((pc: any) => {
+        // projects might be returned as an array or object depending on query
+        const projectData = Array.isArray(pc.projects) ? pc.projects[0] : pc.projects;
+        return {
+            project_id: projectData?.id,
+            project_name: projectData?.project_name,
+            relationship: "client" as const,
+        };
+    }).filter(p => p.project_id), // filter out any where project join failed
   ];
 
   return userProjects;
