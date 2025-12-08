@@ -540,8 +540,7 @@ setFavourites(favouritesData as any as FavouriteData[]);
                                         name: model.model_name,
                                         category: model.model_categories?.model_category || "Uncategorized",
                                         version: versionStr, 
-                                        imageUrl: thumbUrl,
-                                        status: model.model_status?.status
+                                        imageUrl: thumbUrl  
                                       }} 
                                     />
                                   );
