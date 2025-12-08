@@ -71,7 +71,6 @@ interface CreatorWithPortfolios {
   }>;
 }
 
-
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("home");
   const [searchTerm, setSearchTerm] = useState("");
@@ -265,8 +264,6 @@ export default function ClientDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* UserSelector removed - using authenticated user */}
-
               {currentUser ? (
                 <Link
                   href="/profile?from=client"
@@ -581,7 +578,8 @@ export default function ClientDashboard() {
                                       name: model.model_name,
                                       category: model.model_categories?.model_category || "Uncategorized",
                                       version: versionStr, 
-                                      imageUrl: thumbUrl  
+                                      imageUrl: thumbUrl,
+                                      status: model.model_status?.status
                                     }} 
                                   />
                                 );
