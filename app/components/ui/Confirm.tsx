@@ -10,6 +10,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   size?: "small" | "medium" | "large";
+  hideActions?: boolean; // Add this prop
 }
 
 export function Modal({
@@ -21,6 +22,7 @@ export function Modal({
   onConfirmLabel = "Confirm Change",
   onCancelLabel = "Cancel",
   size = "medium",
+  hideActions = false, // Default to false
 }: ModalProps) {
   if (!isOpen) return null;
 
@@ -35,16 +37,20 @@ export function Modal({
       <Card className={`w-full ${sizeClasses[size]} p-6 max-h-[90vh] overflow-y-auto`}>
         <h2 className="text-lg font-semibold text-brown">{title}</h2>
         <div className="mt-2 text-sm text-brown/80">{children}</div>
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="outline" onClick={onClose}>
-            {onCancelLabel}
-          </Button>
-          {onConfirm && (
-            <Button variant="brown" onClick={onConfirm}>
-              {onConfirmLabel}
+        
+        {/* Conditionally render the actions footer */}
+        {!hideActions && (
+          <div className="mt-6 flex justify-end gap-3">
+            <Button variant="outline" onClick={onClose}>
+              {onCancelLabel}
             </Button>
-          )}
-        </div>
+            {onConfirm && (
+              <Button variant="brown" onClick={onConfirm}>
+                {onConfirmLabel}
+              </Button>
+            )}
+          </div>
+        )}
       </Card>
     </div>
   );
