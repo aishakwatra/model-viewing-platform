@@ -135,6 +135,7 @@ export async function fetchUserFavourites(userId: number) {
           model_id,
           version,
           obj_file_path,
+          thumbnail_url,
           can_download,
           created_at,
           models (

@@ -43,6 +43,7 @@ interface FavouriteData {
     model_id: number;
     version: number;
     obj_file_path: string;
+    thumbnail_url: string | null;
     can_download: boolean;
     created_at: string;
     models: {
@@ -69,6 +70,7 @@ interface CreatorWithPortfolios {
     thumbnailUrl: string;
   }>;
 }
+
 
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("home");
@@ -195,7 +197,7 @@ export default function ClientDashboard() {
           id: number;
           version: number;
           created_at: string;
-          image_path: string | null;
+          thumbnail_url: string | null;
         }>;
       }
     > = {};
@@ -216,7 +218,7 @@ export default function ClientDashboard() {
         id: fav.model_versions.id,
         version: fav.model_versions.version,
         created_at: fav.model_versions.created_at,
-        image_path: fav.model_versions.model_images?.[0]?.image_path || null,
+        thumbnail_url: fav.model_versions.thumbnail_url,
       });
     });
 
@@ -617,10 +619,11 @@ export default function ClientDashboard() {
                         {isOpen && (
                           <div className="p-4 border-t border-brown/10 bg-brown/5">
                             <FavouritesCarousel 
+                              modelId={fav.modelId.toString()}
                               versions={fav.versions.map(v => ({
                                 id: v.id.toString(),
                                 versionNumber: v.version.toString(),
-                                imageUrl: v.image_path || "/sangeet-stage.png"
+                                imageUrl: v.thumbnail_url || "/sangeet-stage.png"
                               }))} 
                             />
                           </div>

@@ -8,9 +8,9 @@ interface Version {
   imageUrl: string;
 }
 
-export function FavouriteVersionCard({ version }: { version: Version }) {
+export function FavouriteVersionCard({ version, modelId }: { version: Version; modelId: string }) {
   return (
-    <Link href="/models" className="block group">
+    <Link href={`/models/${modelId}?version=${version.versionNumber}`} className="block group">
       <div className="rounded-xl overflow-hidden bg-white border border-brown/10 group-hover:border-brown/20 transition-all shadow-sm">
         <div className="relative aspect-[4/3] w-full bg-beige">
           <Image

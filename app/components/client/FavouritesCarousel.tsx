@@ -14,6 +14,7 @@ interface Version {
 
 interface FavouritesCarouselProps {
   versions: Version[];
+  modelId: string;
 }
 
 // Arrow SVG Icon for buttons
@@ -26,7 +27,7 @@ function ArrowIcon({ direction = 'left' }: { direction?: 'left' | 'right' }) {
   );
 }
 
-export function FavouritesCarousel({ versions }: FavouritesCarouselProps) {
+export function FavouritesCarousel({ versions, modelId }: FavouritesCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -63,7 +64,7 @@ export function FavouritesCarousel({ versions }: FavouritesCarouselProps) {
     return (
        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {versions.map((version) => (
-          <FavouriteVersionCard key={version.id} version={version} />
+          <FavouriteVersionCard key={version.id} version={version} modelId={modelId} />
         ))}
       </div>
     )
@@ -78,7 +79,7 @@ export function FavouritesCarousel({ versions }: FavouritesCarouselProps) {
       >
         {versions.map((version) => (
           <div key={version.id} className="snap-start shrink-0 w-[48%] md:w-[32%]">
-             <FavouriteVersionCard version={version} />
+             <FavouriteVersionCard version={version} modelId={modelId} />
           </div>
         ))}
       </div>
