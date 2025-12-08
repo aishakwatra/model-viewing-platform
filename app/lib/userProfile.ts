@@ -308,30 +308,37 @@ export async function deleteUserProfilePicture(authUserId: string): Promise<void
  */
 export async function getUserStatistics(userId: number) {
   try {
-    const [projectsCount, favouritesCount, commentsCount] = await Promise.all([
-      // Count projects user has access to (for clients) or created (for creators)
-      supabase
-        .from("project_clients")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId),
+    // Count projects where user is creator
+    const { count: createdProjectsCount } = await supabase
+      .from("projects")
+      .select("*", { count: "exact", head: true })
+      .eq("creator_id", userId);
 
-      // Count favourites
-      supabase
-        .from("user_favourites")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId),
+    // Count projects where user is a client
+    const { count: clientProjectsCount } = await supabase
+      .from("project_clients")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
 
-      // Count comments
-      supabase
-        .from("comments")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId),
-    ]);
+    // Count favourites
+    const { count: favouritesCount } = await supabase
+      .from("user_favourites")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    // Count comments
+    const { count: commentsCount } = await supabase
+      .from("comments")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    // Total projects = created projects + client projects
+    const totalProjects = (createdProjectsCount || 0) + (clientProjectsCount || 0);
 
     return {
-      projects: projectsCount.count || 0,
-      favourites: favouritesCount.count || 0,
-      comments: commentsCount.count || 0,
+      projects: totalProjects,
+      favourites: favouritesCount || 0,
+      comments: commentsCount || 0,
     };
   } catch (error) {
     console.error("Error fetching user statistics:", error);
