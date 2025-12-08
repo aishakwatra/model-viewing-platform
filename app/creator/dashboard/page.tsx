@@ -361,6 +361,7 @@ export default function CreatorDashboardPage() {
                 onTabChange={setActiveTab}
                 selectedDate={selectedDate}
                 onDateChange={setSelectedDate}
+                categories={categories} // Passed the dynamic categories here
               />
               <div className="space-y-4">
                 {filteredProjects.length > 0 ? (

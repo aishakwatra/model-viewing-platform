@@ -1,6 +1,6 @@
 import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
-import { filterTabs } from "@/app/lib/data";
+// Removed import { filterTabs } from "@/app/lib/data";
 
 interface DashboardFiltersProps {
   searchQuery: string;
@@ -9,6 +9,7 @@ interface DashboardFiltersProps {
   onTabChange: (tab: string) => void;
   selectedDate: string | null;
   onDateChange: (date: string | null) => void;
+  categories: any[]; // New prop to accept dynamic categories
 }
 
 export function DashboardFilters({
@@ -18,7 +19,12 @@ export function DashboardFilters({
   onTabChange,
   selectedDate,
   onDateChange,
+  categories,
 }: DashboardFiltersProps) {
+  
+  // Dynamically generate tabs based on DB categories
+  const tabs = ["All Projects", ...categories.map((c) => c.model_category)];
+
   return (
     <Card className="p-4 space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]">
@@ -49,7 +55,7 @@ export function DashboardFilters({
       </div>
       <div className="border-t border-brown/10 pt-4">
         <div className="flex flex-wrap gap-2">
-          {filterTabs.map((tab) => (
+          {tabs.map((tab) => (
             <Button
               key={tab}
               variant={activeTab === tab ? "gold" : "outline"}
@@ -64,4 +70,3 @@ export function DashboardFilters({
     </Card>
   );
 }
-
