@@ -21,7 +21,8 @@ export async function fetchCreatorProjects(creatorId: number) {
           model_versions (
             id,              
             version,
-            thumbnail_url
+            thumbnail_url,
+            can_download
           )
         )
       `)
@@ -43,10 +44,12 @@ export async function fetchCreatorProjects(creatorId: number) {
         // Build Maps
         const versionThumbnails: Record<string, string> = {};
         const versionIds: Record<string, number> = {}; 
+        const versionDownloadStatus: Record<string, boolean> = {};
 
         sortedVersions.forEach((v: any) => {
              versionThumbnails[v.version.toString()] = v.thumbnail_url;
-             versionIds[v.version.toString()] = v.id; // Now v.id will actually exist!
+             versionIds[v.version.toString()] = v.id; 
+             versionDownloadStatus[v.version.toString()] = v.can_download;
         });
 
         return {
@@ -58,7 +61,8 @@ export async function fetchCreatorProjects(creatorId: number) {
           thumbnailUrl: latestVer?.thumbnail_url || "", 
           versions: versionsList.length > 0 ? versionsList : ["1.0"],
           versionThumbnails,
-          versionIds 
+          versionIds,
+          versionDownloadStatus
         };
       });
 
@@ -426,7 +430,7 @@ export async function addModelToProject(
 
 export async function addNewVersionToModel(
   modelId: number,
-  modelFiles: File[], // CHANGED: Now accepts File[] instead of string
+  modelFiles: File[], 
   imageFiles: File[] = [],
   thumbnailIndex: number = 0
 ) {
@@ -493,7 +497,7 @@ export async function uploadModelFolder(
   try {
     let gltfPath = "";
     
-    // 1. Upload every file in the list
+    // pload every file in the list
     const uploadPromises = files.map(async (file) => {
       // Use webkitRelativePath if available to preserve folder structure (textures/ etc.)
       // Fallback to name if it's flat
@@ -680,6 +684,22 @@ export async function deleteModel(modelId: number) {
     return { success: true };
   } catch (error) {
     console.error("Error deleting model:", error);
+    // @ts-ignore
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateVersionDownloadStatus(versionId: number, canDownload: boolean) {
+  try {
+    const { error } = await supabase
+      .from("model_versions")
+      .update({ can_download: canDownload })
+      .eq("id", versionId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating download status:", error);
     // @ts-ignore
     return { success: false, error: error.message };
   }

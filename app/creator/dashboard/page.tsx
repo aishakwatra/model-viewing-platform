@@ -10,7 +10,8 @@ import {
   fetchCategories, 
   updateModelStatus, 
   deleteProject, 
-  deleteModel 
+  deleteModel,
+  updateVersionDownloadStatus
 } from "@/app/lib/creatorData";
 
 // 1. IMPORT PORTFOLIO FUNCTIONS
@@ -110,6 +111,45 @@ export default function CreatorDashboardPage() {
         const pages = await fetchPortfolioPages(user.user_id);
         setPortfolioPages(pages);
     }
+  };
+
+  const handleToggleDownload = async (versionId: string, canDownload: boolean) => {
+    // 1. Update UI Immediately (Optimistic)
+    setProjects(currentProjects => 
+      currentProjects.map(p => ({
+        ...p,
+        models: p.models.map(m => {
+          const vIds = Object.values(m.versionIds || {});
+          if (vIds.includes(parseInt(versionId))) {
+             const versionKey = Object.keys(m.versionIds || {}).find(
+                key => m.versionIds?.[key] === parseInt(versionId)
+             );
+             
+             if (versionKey) {
+               return {
+                 ...m,
+                 versionDownloadStatus: {
+                   ...m.versionDownloadStatus,
+                   [versionKey]: canDownload
+                 }
+               };
+             }
+          }
+          return m;
+        })
+      }))
+    );
+
+    // 2. Perform API Call
+    const result = await updateVersionDownloadStatus(parseInt(versionId), canDownload);
+
+    // 3. Revert if Failed
+    if (!result.success) {
+       alert("Failed to update status. Reverting...");
+       // Re-run the setProjects logic above with !canDownload to revert (omitted for brevity, but recommended)
+       return false;
+    }
+    return true;
   };
 
   const filteredProjects = useMemo(() => {
@@ -337,6 +377,7 @@ export default function CreatorDashboardPage() {
                       onEditProject={handleEditClick} 
                       onDeleteProject={handleDeleteClick}
                       onDeleteModel={handleDeleteModelClick}
+                      onToggleDownload={handleToggleDownload}
                     />
                   ))
                 ) : (

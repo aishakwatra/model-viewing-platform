@@ -15,18 +15,31 @@ interface ModelCardProps {
   statusOptions?: { id: number; status: string }[]; 
   onStatusChange: (modelId: string, newStatusId: string) => void;
   categories: any[];
-  onDelete: (model: Model) => void; // <--- NEW PROP
+  onDelete: (model: Model) => void;
+  onToggleDownload: (versionId: string, canDownload: boolean) => Promise<boolean>;
 }
 
-export function ModelCard({ model, statusOptions = [], onStatusChange, categories, onDelete }: ModelCardProps) {
+export function ModelCard({ model, statusOptions = [], onStatusChange, categories, onDelete, onToggleDownload }: ModelCardProps) {
   const [selectedVersion, setSelectedVersion] = useState(model.version || "1.0");
   const [isUploadOpen, setUploadOpen] = useState(false);
   const [isEditOpen, setEditOpen] = useState(false); 
   
+  const [isToggling, setIsToggling] = useState(false);
+  const canDownload = model.versionDownloadStatus?.[selectedVersion] ?? false;
+
   const currentStatusId = statusOptions?.find(s => s.status === model.status)?.id || "";
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onStatusChange(model.id, e.target.value);
+  };
+
+  const handleToggleClick = async () => {
+    const versionId = model.versionIds?.[selectedVersion];
+    if (!versionId) return;
+
+    setIsToggling(true);
+    await onToggleDownload(versionId.toString(), !canDownload);
+    setIsToggling(false);
   };
 
   const activeThumbnail = 
@@ -101,7 +114,8 @@ export function ModelCard({ model, statusOptions = [], onStatusChange, categorie
               </div>
             </div>
 
-            <div className="w-full lg:w-auto">
+            <div className="w-full lg:w-auto flex flex-col gap-3">
+               {/* Status Select */}
                <div className="relative">
                  <select
                     value={currentStatusId}
@@ -117,6 +131,28 @@ export function ModelCard({ model, statusOptions = [], onStatusChange, categorie
                     ))}
                   </select>
                </div>
+
+               {/* Download Toggle Button - Explicitly Below */}
+               <button
+                  onClick={handleToggleClick}
+                  disabled={isToggling}
+                  className={`
+                    flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-medium border transition-all w-full lg:w-64
+                    ${canDownload 
+                        ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100" 
+                        : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                    }
+                  `}
+               >
+                  {isToggling ? (
+                      <span className="opacity-70">Updating...</span>
+                  ) : (
+                      <>
+                        <div className={`size-2 rounded-full ${canDownload ? "bg-green-500" : "bg-gray-400"}`} />
+                        {canDownload ? "Download Enabled" : "Download Disabled"}
+                      </>
+                  )}
+               </button>
             </div>
           </div>
 

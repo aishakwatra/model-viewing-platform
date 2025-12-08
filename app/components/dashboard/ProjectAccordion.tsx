@@ -30,6 +30,7 @@ interface ProjectAccordionProps {
   onEditProject: (project: Project) => void;
   onDeleteProject: (project: Project) => void;
   onDeleteModel: (model: Model) => void;
+  onToggleDownload: (versionId: string, canDownload: boolean) => Promise<boolean>;
 }
 
 export function ProjectAccordion({ 
@@ -42,7 +43,8 @@ export function ProjectAccordion({
   onStatusChange,
   onEditProject,
   onDeleteProject,
-  onDeleteModel
+  onDeleteModel,
+  onToggleDownload
 }: ProjectAccordionProps) {
   
   const [isAddModelOpen, setAddModelOpen] = useState(false);
@@ -143,6 +145,7 @@ export function ProjectAccordion({
                     statusOptions={modelStatuses}
                     onStatusChange={onStatusChange}
                     onDelete={onDeleteModel} 
+                    onToggleDownload={onToggleDownload}
                   />
                 ))
               ) : (

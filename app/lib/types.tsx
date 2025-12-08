@@ -11,6 +11,7 @@ export interface Model {
   versions: string[];
   versionThumbnails?: Record<string, string>;
   versionIds?: Record<string, number>; 
+  versionDownloadStatus?: Record<string, boolean>; 
 }
 
 
