@@ -140,6 +140,9 @@ export async function fetchCategories() {
   }
 }
 
+// Alias for better naming clarity
+export const fetchModelCategories = fetchCategories;
+
 export async function updateModelStatus(modelId: number, statusId: number) {
   try {
     // 1. Perform the Status Update

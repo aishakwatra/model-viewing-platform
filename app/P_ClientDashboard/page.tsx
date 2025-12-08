@@ -7,9 +7,10 @@ import { ProfileIcon } from "@/app/components/ui/Icons";
 import { ChevronDownIcon, PortfolioIcon, FavouriteIcon } from "@/app/components/ui/Icons";
 import { ClientFunctionCard } from "@/app/components/client/ClientFunctionCard";
 import { FavouritesCarousel } from "@/app/components/client/FavouritesCarousel";
-import { fetchUserProjects, fetchUserFavourites, fetchProjectModels } from "@/app/lib/clientData";
+import { fetchClientProjects, fetchUserFavourites, ProjectFilters } from "@/app/lib/clientData";
 import { getCurrentUser } from "@/app/lib/auth";
 import { fetchAllCreatorsWithPortfolios } from "@/app/lib/portfolio";
+import { fetchModelCategories } from "@/app/lib/creatorData";
 
 interface ProjectData {
   id: number;
@@ -19,6 +20,7 @@ interface ProjectData {
   creator_id: number;
   project_status?: { status: string } | null;
   model_count: number;
+  models?: ModelData[];
 }
 
 interface ModelData {
@@ -71,12 +73,12 @@ interface CreatorWithPortfolios {
 export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState("home");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [favourites, setFavourites] = useState<FavouriteData[]>([]);
-  const [projectModels, setProjectModels] = useState<Record<number, ModelData[]>>({});
-  const [openProjects, setOpenProjects] = useState<number[]>([]);
+  const [categories, setCategories] = useState<Array<{ id: number; model_category: string }>>([]);
   const [openFavouriteId, setOpenFavouriteId] = useState<number | null>(null);
   const [creators, setCreators] = useState<CreatorWithPortfolios[]>([]);
   const [openCreators, setOpenCreators] = useState<number[]>([]);
@@ -97,23 +99,21 @@ export default function ClientDashboard() {
     initializeDashboard();
   }, []);
 
-
+  // Reload projects when filters change
   useEffect(() => {
-    if (projects.length > 0) {
-      // Open all accordions
-      setOpenProjects(projects.map(p => p.id));
-      
-      // Trigger data fetch for all projects so the content isn't empty
-      projects.forEach(p => {
-        loadProjectModels(p.id);
-      });
+    if (currentUserId && activeTab === "projects") {
+      loadUserData(currentUserId);
     }
-  }, [projects]);
+  }, [searchTerm, selectedCategory]);
 
   async function initializeDashboard() {
     try {
       setLoading(true);
       setError(null);
+
+      // Load model categories for filtering
+      const categoriesData = await fetchModelCategories();
+      setCategories(categoriesData);
 
       // Load creators with portfolios (available to all users)
       const creatorsData = await fetchAllCreatorsWithPortfolios();
@@ -151,30 +151,27 @@ export default function ClientDashboard() {
   async function loadUserData(userId: number) {
     try {
       console.log(`🔄 Loading data for user ID: ${userId}`);
+      
+      // Build filters object
+      const filters: ProjectFilters = {};
+      if (searchTerm.trim()) {
+        filters.search = searchTerm.trim();
+      }
+      if (selectedCategory) {
+        filters.categoryId = selectedCategory;
+      }
+
       const [projectsData, favouritesData] = await Promise.all([
-        fetchUserProjects(userId),
+        fetchClientProjects(userId, filters),
         fetchUserFavourites(userId),
       ]);
       
       console.log(`✅ Loaded ${projectsData.length} projects and ${favouritesData.length} favourites`);
       setProjects(projectsData as any as ProjectData[]);
-setFavourites(favouritesData as any as FavouriteData[]);
+      setFavourites(favouritesData as any as FavouriteData[]);
     } catch (err) {
       console.error("Error loading user data:", err);
       throw err;
-    }
-  }
-
-
-
-  async function loadProjectModels(projectId: number) {
-    if (projectModels[projectId]) return; // Already loaded
-    
-    try {
-      const models = await fetchProjectModels(projectId);
-      setProjectModels(prev => ({ ...prev, [projectId]: models as any as ModelData[] }));
-    } catch (err) {
-      console.error("Failed to load project models:", err);
     }
   }
 
@@ -226,31 +223,14 @@ setFavourites(favouritesData as any as FavouriteData[]);
     return Object.values(groups);
   }, [favourites]);
 
-  const filteredProjects = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter((p) => p.project_name.toLowerCase().includes(q));
-  }, [projects, searchTerm]);
+  // Projects are already filtered by the API, no need for client-side filtering
+  const displayProjects = projects;
 
   const StatusBadge = ({ status }: { status: string }) => (
     <span className={["inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", status === "Complete" || status === "Completed" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"].join(" ")}>
       {status}
     </span>
   );
-
-  const toggleProject = (id: number) => {
-    const isCurrentlyOpen = openProjects.includes(id);
-    
-    if (!isCurrentlyOpen) {
-      loadProjectModels(id);
-    }
-    
-    setOpenProjects(prev =>
-      prev.includes(id)
-        ? prev.filter(projectId => projectId !== id)
-        : [...prev, id]
-    );
-  };
 
   const toggleFavourite = (id: number) => {
     setOpenFavouriteId(prevId => (prevId === id ? null : id));
@@ -478,77 +458,135 @@ setFavourites(favouritesData as any as FavouriteData[]);
 
             {currentUserId && activeTab === "projects" && (
               <div className="space-y-4">
+                {/* Filters Section */}
                 <Card className="p-4 space-y-4">
-                  <div className="relative flex items-center">
-                    <input
-                      type="text"
-                      placeholder="Search projects..."
-                      className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    {searchTerm && (
-                      <Button variant="gold" className="absolute right-2 h-7 px-3 text-xs" onClick={() => setSearchTerm("")}>
-                        Clear
-                      </Button>
-                    )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Search Input */}
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        placeholder="Search projects..."
+                        className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                      {searchTerm && (
+                        <Button variant="gold" className="absolute right-2 h-7 px-3 text-xs" onClick={() => setSearchTerm("")}>
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Category Filter */}
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={selectedCategory || ""}
+                        onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
+                        className="w-full rounded-xl border border-brown/20 bg-white px-3 py-2 text-sm text-brown outline-none focus:ring-2 focus:ring-brown/30"
+                      >
+                        <option value="">All Categories</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.model_category}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedCategory && (
+                        <Button variant="gold" className="h-9 px-3 text-xs whitespace-nowrap" onClick={() => setSelectedCategory(null)}>
+                          Clear Filter
+                        </Button>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Active Filters Display */}
+                  {(searchTerm || selectedCategory) && (
+                    <div className="flex items-center gap-2 text-xs text-brown/70">
+                      <span className="font-medium">Active filters:</span>
+                      {searchTerm && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-brown/10 px-2 py-1">
+                          Search: "{searchTerm}"
+                        </span>
+                      )}
+                      {selectedCategory && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-brown/10 px-2 py-1">
+                          Category: {categories.find(c => c.id === selectedCategory)?.model_category}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </Card>
 
-                {filteredProjects.length === 0 ? (
+                {/* Projects Grid View */}
+                {displayProjects.length === 0 ? (
                   <Card className="p-8 text-center">
-                    <div className="text-brown/70">No projects found</div>
+                    <div className="text-brown/70">
+                      {searchTerm || selectedCategory ? "No projects match your filters" : "No projects found"}
+                    </div>
                   </Card>
                 ) : (
-                  <div className="grid gap-4">
-                    {filteredProjects.map((project) => {
-                      const isOpen = openProjects.includes(project.id);
-                      const models = projectModels[project.id] || [];
+                  <div className="space-y-6">
+                    {displayProjects.map((project) => {
+                      const models = project.models || [];
 
                       return (
-                        <Card key={project.id} className="p-0 overflow-hidden">
-                          <button className="w-full text-left p-4" onClick={() => toggleProject(project.id)}>
-                            <div className="flex items-center justify-between gap-4">
-                              <div>
-                                <h2 className="text-lg font-semibold text-brown">{project.project_name}</h2>
-                                <p className="mt-1 text-xs text-brown/70">
-                                  Start Date: {formatDate(project.event_start_date)} • {project.model_count} models
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                {project.project_status && (
-                                  <StatusBadge status={project.project_status.status} />
-                                )}
-                                <ChevronDownIcon isOpen={isOpen} />
+                        <div key={project.id} className="space-y-4">
+                          {/* Project Header Card */}
+                          <Card className="p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3">
+                                  <h2 className="text-xl font-semibold text-brown">{project.project_name}</h2>
+                                  {project.project_status && (
+                                    <StatusBadge status={project.project_status.status} />
+                                  )}
+                                </div>
+                                <div className="mt-2 flex items-center gap-4 text-sm text-brown/70">
+                                  <span className="flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                      <line x1="16" y1="2" x2="16" y2="6"/>
+                                      <line x1="8" y1="2" x2="8" y2="6"/>
+                                      <line x1="3" y1="10" x2="21" y2="10"/>
+                                    </svg>
+                                    {formatDate(project.event_start_date)}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                    </svg>
+                                    {models.length} {models.length === 1 ? "model" : "models"}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </button>
-                          {isOpen && models.length > 0 && (
-                            <div className="p-4 border-t border-brown/10 bg-brown/5">
-                              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                                {models.map((model) => {
-                                  const sortedVersions = model.model_versions?.sort((a, b) => b.version - a.version) || [];
-                                  const latestVer = sortedVersions[0];
-                                  const versionStr = latestVer?.version?.toString() || "1.0";
-                                  const thumbUrl = latestVer?.thumbnail_url || "/sangeet-stage.png";
+                          </Card>
 
-                                  return (
-                                    <ClientFunctionCard 
-                                      key={model.id} 
-                                      func={{
-                                        id: model.id.toString(),
-                                        name: model.model_name,
-                                        category: model.model_categories?.model_category || "Uncategorized",
-                                        version: versionStr, 
-                                        imageUrl: thumbUrl  
-                                      }} 
-                                    />
-                                  );
-                                })}
-                              </div>
+                          {/* Models Grid - Always Visible */}
+                          {models.length > 0 && (
+                            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                              {models.map((model) => {
+                                const sortedVersions = model.model_versions?.sort((a, b) => b.version - a.version) || [];
+                                const latestVer = sortedVersions[0];
+                                const versionStr = latestVer?.version?.toString() || "1.0";
+                                const thumbUrl = latestVer?.thumbnail_url || "/sangeet-stage.png";
+
+                                return (
+                                  <ClientFunctionCard 
+                                    key={model.id} 
+                                    func={{
+                                      id: model.id.toString(),
+                                      name: model.model_name,
+                                      category: model.model_categories?.model_category || "Uncategorized",
+                                      version: versionStr, 
+                                      imageUrl: thumbUrl  
+                                    }} 
+                                  />
+                                );
+                              })}
                             </div>
                           )}
-                        </Card>
+                        </div>
                       );
                     })}
                   </div>

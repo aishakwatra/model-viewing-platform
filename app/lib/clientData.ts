@@ -1,13 +1,22 @@
 import { supabase } from "./supabase";
 
-// Fetch projects accessible by a specific user (client)
-export async function fetchUserProjects(userId: number) {
+export interface ProjectFilters {
+  search?: string;
+  categoryId?: number;
+  statusId?: number;
+}
+
+// Fetch projects accessible by a specific user (client) with filters
+export async function fetchClientProjects(
+  clientId: number,
+  filters?: ProjectFilters
+) {
   try {
     // Get project_clients entries for this user
     const { data: projectClients, error: pcError } = await supabase
       .from("project_clients")
       .select("project_id")
-      .eq("user_id", userId);
+      .eq("user_id", clientId);
 
     if (pcError) throw pcError;
 
@@ -17,8 +26,8 @@ export async function fetchUserProjects(userId: number) {
 
     const projectIds = projectClients.map((pc) => pc.project_id);
 
-    // Fetch full project details with status
-    const { data: projects, error: projectsError } = await supabase
+    // Build query with filters
+    let query = supabase
       .from("projects")
       .select(
         `
@@ -34,28 +43,78 @@ export async function fetchUserProjects(userId: number) {
       )
       .in("id", projectIds);
 
+    // Apply search filter
+    if (filters?.search) {
+      query = query.ilike("project_name", `%${filters.search}%`);
+    }
+
+    // Apply status filter
+    if (filters?.statusId) {
+      query = query.eq("project_status_id", filters.statusId);
+    }
+
+    const { data: projects, error: projectsError } = await query;
+
     if (projectsError) throw projectsError;
 
-    // For each project, count the number of models
-    const projectsWithCounts = await Promise.all(
+    // For each project, get models with optional category filter
+    const projectsWithModels = await Promise.all(
       (projects || []).map(async (project) => {
-        const { count, error: countError } = await supabase
+        let modelQuery = supabase
           .from("models")
-          .select("*", { count: "exact", head: true })
+          .select(
+            `
+            id,
+            model_name,
+            project_id,
+            model_category_id,
+            created_at,
+            status_id,
+            model_categories (
+              model_category
+            ),
+            model_status (
+              status
+            ),
+            model_versions (
+              version,
+              thumbnail_url
+            )
+          `
+          )
           .eq("project_id", project.id);
 
-        if (countError) {
-          console.error("Error counting models:", countError);
+        // Apply category filter to models
+        if (filters?.categoryId) {
+          modelQuery = modelQuery.eq("model_category_id", filters.categoryId);
+        }
+
+        const { data: models, error: modelsError } = await modelQuery;
+
+        if (modelsError) {
+          console.error("Error fetching models:", modelsError);
         }
 
         return {
           ...project,
-          model_count: count || 0,
+          models: models || [],
+          model_count: models?.length || 0,
         };
       })
     );
 
-    return projectsWithCounts;
+    return projectsWithModels;
+  } catch (error) {
+    console.error("Error fetching client projects:", error);
+    throw error;
+  }
+}
+
+// Legacy function for backward compatibility
+export async function fetchUserProjects(userId: number) {
+  try {
+    const projects = await fetchClientProjects(userId);
+    return projects;
   } catch (error) {
     console.error("Error fetching user projects:", error);
     throw error;

@@ -252,30 +252,14 @@ export async function generateAdminReport(options: ReportOptions): Promise<Blob>
   const workbook = new ExcelJS.Workbook();
 
   // ------------------------------------------------------------
-  // METADATA SHEET
-  // ------------------------------------------------------------
-  const meta = workbook.addWorksheet("metadata");
-  meta.addRows([
-    ["report_type", "Admin Report"],
-    ["generated_at", new Date().toISOString()],
-    ["date_range_start", options.dateRange?.start || "N/A"],
-    ["date_range_end", options.dateRange?.end || "N/A"],
-    ["includes_creator_projects", options.creatorProjectsSummary ? "Yes" : "No"],
-    ["includes_top_favourites", options.topFavoritedProjects ? "Yes" : "No"],
-    ["includes_active_clients", options.activeClientsCount ? "Yes" : "No"],
-  ]);
-
-  // Style metadata sheet
-  meta.getColumn(1).width = 25;
-  meta.getColumn(2).width = 30;
-  meta.getRow(1).font = { bold: true };
-
-  // ------------------------------------------------------------
   // PROJECTS & MODELS PER CREATOR
   // ------------------------------------------------------------
   if (options.creatorProjectsSummary) {
     const creatorData = await fetchCreatorProjectsSummary(options.dateRange);
-    const perUser = workbook.addWorksheet("projects_per_creator");
+    
+    // Only create sheet if there's data
+    if (creatorData.length > 0) {
+      const perUser = workbook.addWorksheet("projects_per_creator");
     
     perUser.columns = [
       { header: "user_id", key: "user_id", width: 12 },
@@ -296,13 +280,12 @@ export async function generateAdminReport(options: ReportOptions): Promise<Blob>
       fgColor: { argb: "FFD4A574" }, // Brown/gold color
     };
 
-    // Add data rows
-    creatorData.forEach((row) => {
-      perUser.addRow(row);
-    });
+      // Add data rows
+      creatorData.forEach((row) => {
+        perUser.addRow(row);
+      });
 
-    // Add summary at the end
-    if (creatorData.length > 0) {
+      // Add summary at the end
       perUser.addRow({});
       const summaryRow = perUser.addRow({
         user_id: "SUMMARY",
@@ -323,7 +306,10 @@ export async function generateAdminReport(options: ReportOptions): Promise<Blob>
   // ------------------------------------------------------------
   if (options.topFavoritedProjects) {
     const favoritedData = await fetchTopFavoritedProjects(options.dateRange);
-    const favourites = workbook.addWorksheet("top_favourites");
+    
+    // Only create sheet if there's data
+    if (favoritedData.length > 0) {
+      const favourites = workbook.addWorksheet("top_favourites");
     
     favourites.columns = [
       { header: "project_id", key: "project_id", width: 12 },
@@ -342,13 +328,12 @@ export async function generateAdminReport(options: ReportOptions): Promise<Blob>
       fgColor: { argb: "FFD4A574" },
     };
 
-    // Add data rows
-    favoritedData.forEach((row) => {
-      favourites.addRow(row);
-    });
+      // Add data rows
+      favoritedData.forEach((row) => {
+        favourites.addRow(row);
+      });
 
-    // Add summary
-    if (favoritedData.length > 0) {
+      // Add summary
       favourites.addRow({});
       const summaryRow = favourites.addRow({
         project_id: "SUMMARY",
@@ -367,7 +352,10 @@ export async function generateAdminReport(options: ReportOptions): Promise<Blob>
   // ------------------------------------------------------------
   if (options.activeClientsCount) {
     const clientsData = await fetchActiveClients(options.dateRange);
-    const clients = workbook.addWorksheet("active_clients");
+    
+    // Only create sheet if there's data
+    if (clientsData.length > 0) {
+      const clients = workbook.addWorksheet("active_clients");
     
     clients.columns = [
       { header: "client_id", key: "client_id", width: 12 },
@@ -385,13 +373,12 @@ export async function generateAdminReport(options: ReportOptions): Promise<Blob>
       fgColor: { argb: "FFD4A574" },
     };
 
-    // Add data rows
-    clientsData.forEach((row) => {
-      clients.addRow(row);
-    });
+      // Add data rows
+      clientsData.forEach((row) => {
+        clients.addRow(row);
+      });
 
-    // Add summary
-    if (clientsData.length > 0) {
+      // Add summary
       clients.addRow({});
       const summaryRow = clients.addRow({
         client_id: "SUMMARY",
