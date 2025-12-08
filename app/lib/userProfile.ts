@@ -178,9 +178,10 @@ export async function updateUserProfile(
     }
 
     // Step 4: Fetch updated user data
+    // FIXED: Added user_id to the select statement
     const { data: updatedUser, error: fetchUpdatedError } = await supabase
       .from("users")
-      .select("auth_user_id, email, full_name, photo_url, user_role_id, created_at")
+      .select("user_id, auth_user_id, email, full_name, photo_url, user_role_id, created_at")
       .eq("auth_user_id", authUserId)
       .single();
 
