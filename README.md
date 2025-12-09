@@ -1,22 +1,22 @@
-##3D Model Viewer Platform
+## 3D Model Viewer Platform
 A collaboration platform designed to bridge the gap between 3D Creators and Clients. This application allows creators to manage projects and showcase 3D assets, clients to review and interact with assigned models, and admins to oversee the entire ecosystem.
 
 ## 1. Admin Role
 
 ### User Management
-- Sign-up Review: Review a list of pending account requests with the ability to approve or reject new users instantly.
-- Role Management: Oversee the user base, managing Creator and Client roles to ensure secure access control.
+- Administrators can access a dedicated interface to review pending sign-up requests and explicitly approve or reject new user accounts.
+- The system allows admins to manage the entire user base by assigning or updating specific Creator and Client roles to ensure appropriate access levels.
 
 ### Project Oversight
-- Global View: Access a master list of all projects across the platform regardless of the creator.
-- User Assignment: Manually add, remove, or edit the specific clients assigned to any creator’s project.
+- Admins possess a global view of the platform that lists every project created by any user, providing total visibility into platform activity.
+- The dashboard includes tools to manually add, remove, or edit the specific clients assigned to a creator's project, facilitating seamless collaboration management.
 
 ### Category Management
 - Create, read, and delete model categories (e.g., Wedding, Reception) to keep the platform organized.
-- Integrity Checks: Smart deletion prevents removing categories that are currently attached to active models.
-
+- The system enforces data integrity by preventing the deletion of any category that is currently associated with an active model.
+  
 ### Reporting System
-- Excel Exports: Generate and download detailed spreadsheets containing platform analytics.
+- The platform generates comprehensive Excel reports using exceljs that aggregate key performance metrics.
 - Metrics: Reports include:
   - Project & model counts per creator
   - A leaderboard of most favourited projects
@@ -25,56 +25,58 @@ A collaboration platform designed to bridge the gap between 3D Creators and Clie
 ## 2. Creator Role
 
 ### Project Management
-- Project Controls: Create new projects with defined event start dates and assign relevant clients for access.
-- Access Management: Edit project details or delete entire projects, with built-in cascade warnings if models are attached.
+- Preators can initialize new projects by defining a project name, setting an event start date, and selecting specific clients for exclusive access.
+- The system allows creators to edit existing project details or permanently delete projects, with built-in cascade warnings to alert them that all associated models and files will also be removed.
 
 ### 3D Model Management
-- Full Asset Upload: Support for uploading complete 3D folders that must contain .gltf, .bin, and texture files.
-- Snapshot Management: Upload multiple 2D reference images and manually select a cover thumbnail for the model card.
-- Versioning System: Upload new versions of existing models to track progress without losing history.
-- Download Permissions: Toggle the “Download Enabled” status for specific versions, granting clients permission to download source 3D assets (ZIP).
-- Editing & Status: Edit model metadata, replace 3D source files, and update model status (In Revision, Awaiting Client Review, Approved, Discontinued).
+- Creators can upload complex 3D assets by selecting a complete folder containing .gltf, .bin, and texture files, with a strict file size limit of 200MB per upload to ensure performance.
+- The platform supports uploading up to 4 reference snapshots per model version, with a 10MB size limit per image, and allows the creator to click and select any uploaded image as the cover thumbnail.
+- Creators can maintain a history of their work by uploading new versions to existing models, which are automatically tracked and ordered by the system.
+- Permissions can be managed at a granular level, allowing creators to toggle a "Download Enabled" status for specific versions that grants clients access to the source files.
+- Models can be updated with status tags such as "In Revision" or "Approved," and creators can modify metadata or replace the 3D source files for any version at any time.
 
 ### Portfolio Creation
-- Public Showcases: Create curated portfolio pages to showcase work to potential clients.
-- Curation: Select specific Approved models to display on these public-facing pages.
+- Creators can generate public-facing Portfolio Pages to showcase their best work to prospective clients.
+- The system provides curation tools that allow creators to select specific "Approved" models to display on these portfolios while keeping other drafts private.
 
 ### View Model
-- Inspect models using the integrated 3D viewer (Pan, Zoom, Orbit controls).
+- Creators access the unified ModelViewerPage to inspect assets and review feedback
+- The Creator's view is streamlined for management; specifically, the "Favourite" button is hidden from their interface to distinguish their role from that of a consumer
 - Engage with client feedback via the comments section.
 
 ## 3. Client (User) Role
 
 ### Dashboard Navigation
-- Explore Tab: Browse a directory of creators and view their public curated portfolio pages.
-- Projects Tab: Access assigned projects and view all contained models.
-- Favourites Tab: Quickly access a personal collection of starred model versions via a dedicated carousel.
+- Clients can browse the Explore Tab to view a directory of Creators and access their public, curated Portfolio Pages.
+- The Projects Tab provides a filtered view of only the specific projects assigned to the client, along with all the models contained within them.
+- Clients can use the Favourites Tab to quickly access a personalized carousel of model versions they have previously "starred" for easy reference.
 
 ### Interactive Viewing
-- Full 3D interaction: orbit, zoom, and pan the model view.
-- Switch between different versions of a model to see progress.
-- Downloads: Download reference snapshots or full 3D assets (ZIP), if enabled by the creator.
+- Clients utilize the same interactive 3D canvas as creators, supporting full orbit, zoom, and pan controls to inspect model details
+- The interface conditionally renders a "Favourite" button exclusively for clients, allowing them to add specific versions to their personal collection
+- Download reference snapshots or full 3D assets (ZIP), if enabled by the creator.
+- Clients can use a dropdown menu to seamlessly switch between different versions of a model to compare changes over time
 
 ### Feedback & Organization
-- Comments: Leave feedback on specific model versions, timestamped for clarity.
-- Favourites: Star specific models to save them to the Favourites tab for quick reference
+- Clients can leave feedback/comments on specific model versions, which are timestamped and logged for the creator to review.
+- The commenting system allows clients to delete their own comments if necessary
 
   
 ## 4. Shared / General Features
 
 ### Secure Authentication
-- Full sign-up and login flows with password encryption and automatic routing based on role (Admin / Creator / Client).
+- The application uses secure authentication practices, routing users to their specific dashboard (Admin, Creator, or Client) immediately upon login based on their assigned role.
+- Passwords are hashed using bcrypt for security before being stored in the database.
 
 ### Profile Management
-- Update profile photos, full names, emails, and change passwords securely.
+- All users have access to a profile settings page where they can update their full name, email address, and profile picture.
+- The system allows users to securely change their password and manage their personal account details.
 
 ### Activity Stats
 - Dashboard widgets showing:
-  - Total assigned projects
+  - Total assigned projects to them
   - Favourites count
-  - Comment activity
-
-
+  - Comment count
 
 ------------------------------------------
 
@@ -93,22 +95,3 @@ bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
