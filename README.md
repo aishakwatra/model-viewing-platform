@@ -83,7 +83,7 @@ A collaboration platform designed to bridge the gap between 3D Creators and Clie
 
 ### 1. Run SQL Script
 Run the provided SQL script to initialize the tables, buckets, and lookup data.
-* Script Name: [`ModelViewerDatabase.sql`](./ModelViewerDatabase.sql)
+* Script Name: [`GenerateDatabase.sql`](./GenerateDatabase.sql)
 
 ### 2. Set Policies for Storage Buckets (Manual Setup)
 *Note: Since storage policies require system-level permissions, these must be set via the Supabase Dashboard UI.*
