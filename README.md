@@ -78,6 +78,34 @@ A collaboration platform designed to bridge the gap between 3D Creators and Clie
   - Favourites count
   - Comment count
 
+
+## Database Setup
+
+### 1. Run SQL Script
+Run the provided SQL script to initialize the tables, buckets, and lookup data.
+* Script Name: [`ModelViewerDatabase.sql`](./ModelViewerDatabase.sql)
+
+### 2. Set Policies for Storage Buckets (Manual Setup)
+*Note: Since storage policies require system-level permissions, these must be set via the Supabase Dashboard UI.*
+
+1.  Click the **Storage** tab (Folder icon) in the left sidebar.
+2.  Under the **Manage** section in the side menu, click **Files**.
+3.  At the top of the page (under the "Files" title), click the **Policies** tab.
+4.  You will see `Models` and `Model Images` listed. Click the **New policy** button on the right side for the **Models** bucket.
+5.  Select **Full customization**.
+6.  **Policy Name:** Enter a name (e.g., `Full access to models for anon and authenticated`).
+7.  **Allowed Operations:** Check **ALL** four boxes:
+    * [x] `SELECT`
+    * [x] `INSERT`
+    * [x] `UPDATE`
+    * [x] `DELETE`
+8.  **Target Roles:** Check both:
+    * [x] `Anon`
+    * [x] `Authenticated`
+9.  Click **Review** and then **Save Policy**.
+10. **Repeat steps 4-9** for the `Model Images` bucket.
+
+
 ------------------------------------------
 
 ## Getting Started
