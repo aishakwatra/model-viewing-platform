@@ -22,6 +22,39 @@ A collaboration platform designed to bridge the gap between 3D Creators and Clie
   - A leaderboard of most favourited projects
   - Active client statistics
 
+
+<table>
+  <tr>
+    <td width="50%">
+      <h4 align="center">Approve Users</h3>
+      <div align="center">
+        <img src="./public/screenshots/admin-approveusers.png" width="100%" alt="Admin Dashboard">
+      </div>
+    </td>
+    <td width="50%">
+      <h4 align="center">Manage Project Users</h3>
+      <div align="center">
+        <img src="./public/screenshots/admin-manageprojects.png" width="100%" alt="Admin Dashboard">
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td width="50%">
+      <h4 align="center">Manage Categories</h3>
+      <div align="center">
+        <img src="./public/screenshots/admin-managecategories.png" width="100%" alt="Admin Dashboard">
+      </div>
+    </td>
+    <td width="50%">
+      <h4 align="center">Generate Excel Report</h3>
+      <div align="center">
+        <img src="./public/screenshots/admin-report.png" width="100%" alt="Admin Dashboard">
+      </div>
+    </td>
+  </tr>
+</table>
+
 ## 2. Creator Role
 
 ### Project Management
@@ -34,6 +67,7 @@ A collaboration platform designed to bridge the gap between 3D Creators and Clie
 - Creators can maintain a history of their work by uploading new versions to existing models, which are automatically tracked and ordered by the system.
 - Permissions can be managed at a granular level, allowing creators to toggle a "Download Enabled" status for specific versions that grants clients access to the source files.
 - Models can be updated with status tags such as "In Revision" or "Approved," and creators can modify metadata or replace the 3D source files for any version at any time.
+- Search for Projects, Filter for Projects based on Start Date, Filter models by category
 
 ### Portfolio Creation
 - Creators can generate public-facing Portfolio Pages to showcase their best work to prospective clients.
@@ -43,6 +77,71 @@ A collaboration platform designed to bridge the gap between 3D Creators and Clie
 - Creators access the unified ModelViewerPage to inspect assets and review feedback
 - The Creator's view is streamlined for management; specifically, the "Favourite" button is hidden from their interface to distinguish their role from that of a consumer
 - Engage with client feedback via the comments section.
+
+
+<table>
+
+<tr>
+    <td width="50%">
+      <h4 align="center">Creator Dashbord</h3>
+      <div align="center">
+        <img src="./public/screenshots/creator-dashboard.png" width="100%" alt="Creator Dashboard">
+      </div>
+    </td>
+    <td width="50%">
+      <h4 align="center">Create New Projects</h3>
+      <div align="center">
+        <img src="./public/screenshots/creator-create project.png" width="100%" alt="Creator Dashboard">
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td width="50%">
+      <h4 align="center">Create New Models</h3>
+      <div align="center">
+        <img src="./public/screenshots/createmodel.png" width="100%" alt="Creator Dashboard">
+      </div>
+    </td>
+    <td width="50%">
+      <h4 align="center">Upload New Model Version</h3>
+      <div align="center">
+        <img src="./public/screenshots/upload-new-ver.png" width="100%" alt="Creator Dashboard">
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td width="50%">
+      <h4 align="center">Model View</h3>
+      <div align="center">
+        <img src="./public/screenshots/modelview1.png" width="100%" alt="Creator Dashboard">
+      </div>
+    </td>
+    <td width="50%">
+      <h4 align="center">Create Portfolio</h3>
+      <div align="center">
+        <img src="./public/screenshots/create-portfolio.png" width="100%" alt="Creator Dashboard">
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td width="50%">
+      <h4 align="center">Add Approved Models to Portfolio</h3>
+      <div align="center">
+        <img src="./public/screenshots/addmodeltoportfolio.png" width="100%" alt="Creator Dashboard">
+      </div>
+    </td>
+    <td width="50%">
+      <h4 align="center">Filter Projects</h3>
+      <div align="center">
+        <img src="./public/screenshots/filterprojects-creator.png" width="100%" alt="Creator Dashboard">
+      </div>
+    </td>
+  </tr>
+
+</table>
 
 ## 3. Client (User) Role
 
@@ -61,6 +160,40 @@ A collaboration platform designed to bridge the gap between 3D Creators and Clie
 - Clients can leave feedback/comments on specific model versions, which are timestamped and logged for the creator to review.
 - The commenting system allows clients to delete their own comments if necessary
 
+<table>
+
+  <tr>
+    <td width="50%">
+      <h4 align="center">Client Dashboard</h3>
+      <div align="center">
+        <img src="./public/screenshots/clientdashboard.png" width="100%" alt="Client Dashboard">
+      </div>
+    </td>
+    <td width="50%">
+      <h4 align="center">Browse Creator Portfolios</h3>
+      <div align="center">
+        <img src="./public/screenshots/browsepage-client.png" width="100%" alt="Client Dashboard">
+      </div>
+    </td>
+  </tr>
+
+  <tr>
+    <td width="50%">
+      <h4 align="center">Public Model View from Public Portfolio</h3>
+      <div align="center">
+        <img src="./public/screenshots/portfolio-model-view.png" width="100%" alt="Client Dashboard">
+      </div>
+    </td>
+    <td width="50%">
+      <h4 align="center">Leave Comments & Favourite Version in Private Model View</h3>
+      <div align="center">
+        <img src="./public/screenshots/client-modelviewer-comment.png" width="100%" alt="Client Dashboard">
+      </div>
+    </td>
+  </tr>
+  
+</table>
+
   
 ## 4. Shared / General Features
 
@@ -77,6 +210,42 @@ A collaboration platform designed to bridge the gap between 3D Creators and Clie
   - Total assigned projects to them
   - Favourites count
   - Comment count
+
+
+<table>
+
+<tr>
+  <td width="50%">
+    <h4 align="center">Sign in requires Admin Approval</h3>
+    <div align="center">
+      <img src="./public/screenshots/login-need-aproval.png" width="100%" alt="Authentication">
+    </div>
+  </td>
+  <td width="50%">
+    <h4 align="center">Sign In Page</h3>
+    <div align="center">
+      <img src="./public/screenshots/signin-page.png" width="100%" alt="Creator Dashboard">
+    </div>
+  </td>
+</tr>
+
+<tr>
+  <td width="50%">
+    <h4 align="center">Sign Up Page</h3>
+    <div align="center">
+      <img src="./public/screenshots/create-account.png" width="100%" alt="Authentication">
+    </div>
+  </td>
+  <td width="50%">
+    <h4 align="center">Edit Profile Info & Activity Stats</h3>
+    <div align="center">
+      <img src="./public/screenshots/editprofileinfo.png" width="100%" alt="Authentication">
+    </div>
+  </td>
+</tr>
+  
+</table>
+
 
 
 ## Database Setup
@@ -106,20 +275,3 @@ Run the provided SQL script to initialize the tables, buckets, and lookup data.
 10. **Repeat steps 4-9** for the `Model Images` bucket.
 
 
-------------------------------------------
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
