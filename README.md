@@ -250,6 +250,8 @@ A collaboration platform designed to bridge the gap between 3D Creators and Clie
 
 ## Database Setup
 
+[Database Diagram](./Database%20Diagram.pdf)
+
 ### 1. Run SQL Script
 Run the provided SQL script to initialize the tables, buckets, and lookup data.
 * Script Name: [`GenerateDatabase.sql`](./GenerateDatabase.sql)
