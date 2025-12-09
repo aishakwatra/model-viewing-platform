@@ -1,4 +1,4 @@
-## 3D Model Viewer Platform
+# 3D Model Viewer Platform
 A collaboration platform designed to bridge the gap between 3D Creators and Clients. This application allows creators to manage projects and showcase 3D assets, clients to review and interact with assigned models, and admins to oversee the entire ecosystem.
 
 ## 1. Admin Role
